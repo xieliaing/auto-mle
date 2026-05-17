@@ -1,0 +1,20 @@
+# AutoMLE default configuration.
+# CLI flags override these values. See program.md for full documentation.
+
+# --- Required experiment inputs ---------------------------------------------
+# Base model: HuggingFace model ID or absolute/relative path to a local checkpoint.
+checkpoint: Qwen/Qwen3-1.7B
+
+# Evaluation file: CSV/JSONL dataset or a Python eval script.
+eval_file: data/eval.csv
+
+# Training Python file implementing the fine-tuning logic.
+train_file: train.py
+
+# --- Experiment identity ----------------------------------------------------
+experiment_name: experiment
+
+# --- Auto-research loop controls --------------------------------------------
+budget: 10          # max exploration runs before promotion phase
+final_top_k: 3      # top-K configs re-run at full scale
+target_accuracy:    # set e.g. 0.92 to stop exploration early (null = disabled)
