@@ -1,29 +1,27 @@
 """
-Data loading and per-experiment data-strategy application.
+Product-comparison data module.
 
-Loads `train_pairs.csv` and `test_pairs.csv` lazily, then applies whatever
-DataConfigSpec asks for (subset size, balance, hard-negative mining,
-augmentation, jaccard filtering). All transformations are deterministic given
-`seed` so runs are reproducible.
+Implements the AutoMLE data interface for the product-matching binary task:
 
-Schema of input CSVs:
-    title1: str, title2: str, image1: str, image2: str, Label: int
-We ignore the image columns in this text-only pipeline.
+  load_train_dataset(seed, subset, **kwargs) -> torch.utils.data.Dataset
+  load_eval_dataset(seed, subset, **kwargs)  -> pandas.DataFrame
+  get_collator(tokenizer, max_seq_len)       -> ProductPairCollator
+
+Source CSV schema:
+    title1: str, title2: str, Label: int   (image columns are ignored)
+
+Data paths are taken from kwargs ('train_path' / 'eval_path') or, as a
+fallback, the AUTOMLE_TRAIN_DATA / AUTOMLE_EVAL_DATA environment variables.
 """
 from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Tuple
+import os
 import random
 import re
 
 import pandas as pd
 
-# torch is only needed for the ProductPairDataset class. We import it lazily
-# inside that class so the rest of this module (loading, balancing, hard-neg
-# mining, augmentation, jaccard filtering) is usable in environments without
-# torch — useful for unit tests and data-prep scripts.
-
-from .schema import DataConfigSpec
 from .prompts import build_messages, label_to_answer
 
 
@@ -52,7 +50,6 @@ def load_csv(path: str | Path) -> pd.DataFrame:
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"{path} is missing required columns: {missing}")
-    # Coerce types and drop unusable rows
     df = df.dropna(subset=["title1", "title2", "Label"]).copy()
     df["title1"] = df["title1"].astype(str)
     df["title2"] = df["title2"].astype(str)
@@ -60,10 +57,18 @@ def load_csv(path: str | Path) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
+def _resolve_path(kwargs_key: str, env_key: str, kwargs: dict) -> str:
+    path = kwargs.get(kwargs_key) or os.environ.get(env_key)
+    if not path:
+        raise ValueError(
+            f"Provide '{kwargs_key}' via kwargs or set ${env_key}."
+        )
+    return path
+
+
 # --- Data strategies ----------------------------------------------------------
 
 def _augment_title(title: str, rng: random.Random) -> str:
-    """Lightweight title augmentation for robustness."""
     ops = []
     if rng.random() < 0.3:
         ops.append("lower")
@@ -88,42 +93,27 @@ def _augment_title(title: str, rng: random.Random) -> str:
 def _mine_hard_negatives(
     df: pd.DataFrame, frac: float, rng: random.Random,
 ) -> pd.DataFrame:
-    """
-    Replace `frac` of the negative pairs with synthetic hard negatives:
-    for each negative we keep, we also (with probability `frac`) swap title2
-    with a *different* title from another negative whose Jaccard overlap with
-    title1 is high. This keeps label valid (still a negative) but makes the
-    pair lexically harder.
-
-    Implementation note: this is O(n) using a token-bucket index, not O(n^2).
-    """
     if frac <= 0.0:
         return df
-
     neg = df[df["Label"] == 0].reset_index(drop=True)
     if len(neg) < 2:
         return df
-
-    # Build a small inverted index from token -> list of row indices
     bucket: dict[str, list[int]] = {}
     for i, t in enumerate(neg["title2"].tolist()):
         for tok in _tokens(t):
             bucket.setdefault(tok, []).append(i)
-
     new_title2 = neg["title2"].tolist()
     for i, t1 in enumerate(neg["title1"].tolist()):
         if rng.random() >= frac:
             continue
-        # Find candidates that share at least one token with title1
         cand_set: set[int] = set()
         for tok in _tokens(t1):
-            cand_set.update(bucket.get(tok, [])[:8])  # cap to keep it cheap
+            cand_set.update(bucket.get(tok, [])[:8])
         cand_set.discard(i)
         if not cand_set:
             continue
         j = rng.choice(list(cand_set))
         new_title2[i] = neg["title2"].iloc[j]
-
     neg = neg.copy()
     neg["title2"] = new_title2
     pos = df[df["Label"] == 1]
@@ -153,59 +143,12 @@ def _balance(df: pd.DataFrame, mode: str, rng: random.Random) -> pd.DataFrame:
     return df
 
 
-def apply_data_strategy(
-    df: pd.DataFrame,
-    spec: DataConfigSpec,
-    seed: int,
-    is_train: bool,
-) -> pd.DataFrame:
-    """Apply the DataConfigSpec to a raw frame. Eval frames only get subsetting."""
-    rng = random.Random(seed)
-    out = df
-
-    # 1. Jaccard filter (train only - it's a cleaning op)
-    if is_train and (spec.min_jaccard > 0.0 or spec.max_jaccard < 1.0):
-        jac = out.apply(lambda r: _jaccard(r["title1"], r["title2"]), axis=1)
-        out = out[(jac >= spec.min_jaccard) & (jac <= spec.max_jaccard)].reset_index(drop=True)
-
-    # 2. Balance (train only)
-    if is_train:
-        out = _balance(out, spec.balance, rng)
-
-    # 3. Hard negatives (train only)
-    if is_train and spec.hard_neg_frac > 0.0:
-        out = _mine_hard_negatives(out, spec.hard_neg_frac, rng)
-
-    # 4. Subset
-    subset = spec.train_subset if is_train else spec.eval_subset
-    if subset is not None and subset < len(out):
-        out = out.sample(subset, random_state=rng.randint(0, 1 << 31)).reset_index(drop=True)
-
-    # Title augmentation flag is consumed by the Dataset (per-batch), not here.
-    return out
-
-
 # --- Torch dataset ------------------------------------------------------------
-
-def _get_torch_dataset_base():
-    """Lazy import of torch.utils.data.Dataset so this module works without torch."""
-    from torch.utils.data import Dataset  # type: ignore
-    return Dataset
-
 
 class ProductPairDataset:
     """
     Holds the post-processed DataFrame and serves dicts:
         {"messages": [...chat...], "label": int, "title1": str, "title2": str}
-
-    Tokenization happens in the collator. Augmentation, if enabled, runs here
-    so it's stochastic per-epoch.
-
-    Note on inheritance: torch.utils.data.Dataset is just an abstract base
-    that requires __len__ and __getitem__. We provide both, and we register
-    this class as a virtual subclass at first instantiation so isinstance
-    checks in the trainer still pass. This keeps the module importable
-    without torch.
     """
 
     _registered = False
@@ -213,11 +156,10 @@ class ProductPairDataset:
     def __init__(self, df: pd.DataFrame, augment: bool = False, seed: int = 0):
         if not ProductPairDataset._registered:
             try:
-                base = _get_torch_dataset_base()
-                base.register(ProductPairDataset)
+                from torch.utils.data import Dataset  # type: ignore
+                Dataset.register(ProductPairDataset)
                 ProductPairDataset._registered = True
             except ImportError:
-                # OK to skip; only matters if a torch DataLoader gets used.
                 pass
         self.df = df.reset_index(drop=True)
         self.augment = augment
@@ -240,19 +182,55 @@ class ProductPairDataset:
             "title2": t2,
         }
 
-    # SFTTrainer uses this attribute to decide whether to run .map()
     @property
     def column_names(self):
-        # Including 'input_ids' tells SFTTrainer the data is pre-processed and
-        # the custom collator will handle encoding.
         return ["input_ids", "labels", "messages", "label", "title1", "title2"]
 
 
-# --- Convenience --------------------------------------------------------------
+# --- AutoMLE data interface ---------------------------------------------------
 
-def load_train_eval(
-    train_path: str, eval_path: str, data_spec: DataConfigSpec, seed: int,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    train_df = apply_data_strategy(load_csv(train_path), data_spec, seed, is_train=True)
-    eval_df = apply_data_strategy(load_csv(eval_path), data_spec, seed, is_train=False)
-    return train_df, eval_df
+def load_train_dataset(
+    seed: int = 42,
+    subset: Optional[int] = None,
+    balance: str = "none",
+    hard_neg_frac: float = 0.0,
+    augment_titles: bool = False,
+    min_jaccard: float = 0.0,
+    max_jaccard: float = 1.0,
+    **kwargs,
+):
+    """Build the training Dataset for the product-comparison task."""
+    rng = random.Random(seed)
+    df = load_csv(_resolve_path("train_path", "AUTOMLE_TRAIN_DATA", kwargs))
+
+    if min_jaccard > 0.0 or max_jaccard < 1.0:
+        jac = df.apply(lambda r: _jaccard(r["title1"], r["title2"]), axis=1)
+        df = df[(jac >= min_jaccard) & (jac <= max_jaccard)].reset_index(drop=True)
+
+    df = _balance(df, balance, rng)
+    if hard_neg_frac > 0.0:
+        df = _mine_hard_negatives(df, hard_neg_frac, rng)
+
+    if subset is not None and subset < len(df):
+        df = df.sample(subset, random_state=rng.randint(0, 1 << 31)).reset_index(drop=True)
+
+    return ProductPairDataset(df, augment=augment_titles, seed=seed)
+
+
+def load_eval_dataset(
+    seed: int = 42,
+    subset: Optional[int] = None,
+    **kwargs,
+) -> pd.DataFrame:
+    """Return the eval frame; the product evaluator iterates rows directly."""
+    rng = random.Random(seed)
+    df = load_csv(_resolve_path("eval_path", "AUTOMLE_EVAL_DATA", kwargs))
+    if subset is not None and subset < len(df):
+        df = df.sample(subset, random_state=rng.randint(0, 1 << 31)).reset_index(drop=True)
+    return df
+
+
+def get_collator(tokenizer, max_seq_len: int):
+    """Return the product-pair collator that masks loss to the answer token."""
+    from .trainer import ProductPairCollator
+    return ProductPairCollator(tokenizer=tokenizer, max_seq_len=max_seq_len)

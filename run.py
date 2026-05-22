@@ -5,15 +5,16 @@ See program.md for full usage instructions.
 
 Usage:
     python run.py \\
-        --experiment-name my-exp \\
+        --key my-task \\
         --checkpoint Qwen/Qwen3-1.7B \\
-        --eval-file data/eval.csv \\
-        --train-file custom_train.py
+        --data-file path/to/data.py \\
+        --evaluator-file path/to/evaluator.py
 
 Inputs:
-    --checkpoint   Base model: HuggingFace model ID or local checkpoint path.
-    --eval-file    Evaluation dataset (CSV/JSONL) or Python eval script.
-    --train-file   Python training script implementing the fine-tuning logic.
+    --checkpoint        Base model: HuggingFace model ID or local checkpoint path.
+    --data-file         Python module exposing load_train_dataset / load_eval_dataset.
+    --evaluator-file    Python module exposing evaluate(adapter_dir, model_name, eval_data).
+    --key               Task key (omit to auto-generate; sanitized to [a-z0-9_-]).
 """
 from __future__ import annotations
 
@@ -37,14 +38,14 @@ def parse_args(argv=None):
     # --- Required experiment inputs -------------------------------------------
     p.add_argument("--checkpoint", default=None,
                    help="Base model: HuggingFace model ID or local checkpoint path.")
-    p.add_argument("--eval-file", default=None,
-                   help="Evaluation file: CSV/JSONL dataset or Python eval script.")
-    p.add_argument("--train-file", default=None,
-                   help="Training Python file implementing the fine-tuning logic.")
+    p.add_argument("--data-file", default=None,
+                   help="Python module: data.py exposing load_train_dataset / load_eval_dataset.")
+    p.add_argument("--evaluator-file", default=None,
+                   help="Python module: evaluator.py exposing evaluate(adapter_dir, model_name, eval_data).")
 
-    # --- Experiment identity --------------------------------------------------
-    p.add_argument("--experiment-name", default=None,
-                   help="Name for this experiment (used for branch and folder naming).")
+    # --- Task identity --------------------------------------------------------
+    p.add_argument("--key", default=None,
+                   help="Task key (used for branch + folder). Auto-generated if omitted.")
 
     # --- Auto-research loop controls -----------------------------------------
     p.add_argument("--budget", type=int, default=None,
@@ -83,72 +84,70 @@ def main(argv=None):
             return arg_val
         return defaults.get(key, fallback)
 
-    # Resolve the three required inputs
-    checkpoint  = pick(args.checkpoint,  "checkpoint",  None)
-    eval_file   = pick(args.eval_file,   "eval_file",   None)
-    train_file  = pick(args.train_file,  "train_file",  None)
+    checkpoint     = pick(args.checkpoint,     "checkpoint",     None)
+    data_file      = pick(args.data_file,      "data_file",      None)
+    evaluator_file = pick(args.evaluator_file, "evaluator_file", None)
 
-    experiment_name = args.experiment_name or defaults.get("experiment_name", "experiment")
-    budget       = pick(args.budget,         "budget",       10)
-    final_top_k  = pick(args.final_top_k,    "final_top_k",  3)
-    target_acc   = pick(args.target_accuracy, "target_accuracy", None)
+    task_key    = args.key or defaults.get("key")
+    budget      = pick(args.budget,           "budget",      10)
+    final_top_k = pick(args.final_top_k,      "final_top_k", 3)
+    target_acc  = pick(args.target_accuracy,  "target_accuracy", None)
 
     # --- Validate required inputs --------------------------------------------
     missing = [flag for flag, val in [
-        ("--checkpoint", checkpoint),
-        ("--eval-file",  eval_file),
-        ("--train-file", train_file),
+        ("--checkpoint",     checkpoint),
+        ("--data-file",      data_file),
+        ("--evaluator-file", evaluator_file),
     ] if val is None]
-
     if missing:
         print(f"[error] Required arguments missing: {', '.join(missing)}", file=sys.stderr)
         print("        See program.md for usage instructions.", file=sys.stderr)
         sys.exit(1)
 
-    for flag, path in [("--eval-file", eval_file), ("--train-file", train_file)]:
+    for flag, path in [("--data-file", data_file), ("--evaluator-file", evaluator_file)]:
         if not Path(path).exists():
             print(f"[error] File not found for {flag}: {path}", file=sys.stderr)
             sys.exit(2)
 
-    # --- Warn if LLM proposer key is missing ---------------------------------
     use_llm = not args.no_llm_proposer
     if use_llm and not os.environ.get("ANTHROPIC_API_KEY"):
         print("[warn] ANTHROPIC_API_KEY not set; LLM proposer will fall back to heuristics.")
         print("       Pass --no-llm-proposer to silence this warning.")
 
-    # --- Create experiment branch + folder -----------------------------------
+    # --- Create / resume task folder + branch --------------------------------
     if not args.no_branch:
-        try:
-            from experiment_manager import create_experiment
-            experiment = create_experiment(
-                experiment_name=experiment_name,
-                checkpoint=checkpoint,
-                eval_file=eval_file,
-                train_file=train_file,
-            )
-            exp_folder  = Path(experiment["folder"])
-            eval_file   = experiment["eval_file"]
-            train_file  = experiment["train_file"]
-            print(f"[experiment] Branch : {experiment['branch']}")
-            print(f"[experiment] Folder : {exp_folder}")
-        except Exception as e:
-            print(f"[warn] Branch creation failed ({e}); continuing without branch management.")
-            exp_folder = Path("experiments") / experiment_name
-            exp_folder.mkdir(parents=True, exist_ok=True)
+        from experiment_manager import setup_task
+        task = setup_task(
+            key=task_key,
+            data_file=data_file,
+            evaluator_file=evaluator_file,
+            checkpoint=checkpoint,
+        )
+        data_file      = task["data_file"]
+        evaluator_file = task["evaluator_file"]
+        trainer_file   = task["trainer_file"]
+        run_folder     = Path(task["run_folder"])
+        print(f"[task] Key      : {task['key']}")
+        print(f"[task] Branch   : {task['branch']}")
+        print(f"[task] Folder   : {task['task_folder']}")
+        print(f"[task] Run      : {run_folder}")
     else:
-        exp_folder = Path("experiments") / experiment_name
-        exp_folder.mkdir(parents=True, exist_ok=True)
+        # Headless mode: use a sibling 'trainer.py' next to the data/evaluator
+        # files (falls back to auto_research/trainer.py).
+        data_dir = Path(data_file).resolve().parent
+        candidate = data_dir / "trainer.py"
+        trainer_file = str(candidate if candidate.exists()
+                            else Path("auto_research") / "trainer.py")
+        run_folder = Path("runs") / (task_key or "adhoc")
+        run_folder.mkdir(parents=True, exist_ok=True)
 
-    results_dir = exp_folder / "results"
+    print(f"checkpoint     : {checkpoint}")
+    print(f"data file      : {data_file}")
+    print(f"evaluator file : {evaluator_file}")
+    print(f"trainer file   : {trainer_file}")
+    print(f"results dir    : {run_folder}")
+    print(f"budget         : {budget} exploration runs, top-{final_top_k} full reruns")
 
-    # --- Print run summary ---------------------------------------------------
-    print(f"checkpoint  : {checkpoint}")
-    print(f"eval file   : {eval_file}")
-    print(f"train file  : {train_file}")
-    print(f"results dir : {results_dir}")
-    print(f"budget      : {budget} exploration runs, top-{final_top_k} full reruns")
-
-    # --- Import and run the orchestrator ------------------------------------
     try:
         from auto_research.orchestrator import orchestrate
     except ImportError as e:
@@ -157,10 +156,11 @@ def main(argv=None):
         sys.exit(3)
 
     summary = orchestrate(
-        train_csv=eval_file,     # eval file is the primary data source
-        eval_csv=eval_file,
+        data_path=data_file,
+        evaluator_path=evaluator_file,
+        trainer_path=trainer_file,
         model_name=checkpoint,
-        results_dir=str(results_dir),
+        results_dir=str(run_folder),
         budget=budget,
         final_top_k=final_top_k,
         use_llm_proposer=use_llm,
@@ -173,7 +173,7 @@ def main(argv=None):
     print(f"All results : {summary['results']}")
     if summary.get("best"):
         b = summary["best"]
-        print(f"Best        : {b['exp_id']}  accuracy={b['accuracy']:.4f}")
+        print(f"Best        : {b['exp_id']}  metric={b['accuracy']:.4f}")
 
 
 if __name__ == "__main__":

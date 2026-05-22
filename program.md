@@ -12,53 +12,100 @@ When entering the project for the first time, read in this order:
 2. `configs/default.yaml`
 3. `auto_research/schema.py` — experiment config schema
 4. `auto_research/orchestrator.py` — the auto-research loop
+5. `examples/product_comparison/` — a working reference task
 
 ---
 
 ## Project Overview
 
-AutoMLE is a parent base for autonomous LoRA fine-tuning experiments. It follows the **autoresearch** pattern: a closed loop of Propose → Train → Evaluate → Analyze → Repeat.
+AutoMLE is a parent **template** for autonomous LoRA fine-tuning experiments. The `auto_research/` package is task-agnostic; each new task plugs in by providing a `data.py` and `evaluator.py`. The agent may also edit the per-task `trainer.py` copy.
 
-Each new experiment:
-1. Creates a dedicated git feature branch (`feature/<name>-<timestamp>`)
-2. Creates a dedicated folder (`experiments/<name>-<timestamp>/`)
-3. Copies the provided files into that folder
-4. Runs the auto-research LoRA fine-tuning loop
+The closed loop: **Propose → Train → Evaluate → Analyze → Repeat**.
 
-The codebase accepts exactly **three inputs** per experiment:
+Each task is identified by a **key** (user-supplied or auto-generated). Per key:
+- A feature branch `feature/<key>` is created.
+- A folder `tasks/<key>/` is created containing the task's `data.py`, `evaluator.py`, and `trainer.py`.
+- Each invocation creates a new `tasks/<key>/runs/<timestamp>/` for that run's results.
+
+The codebase accepts these inputs per experiment:
 
 | Input | Flag | Description |
 |-------|------|-------------|
 | Base checkpoint | `--checkpoint` | HuggingFace model ID or local path |
-| Evaluation file | `--eval-file` | CSV/JSONL evaluation dataset or Python eval script |
-| Training file | `--train-file` | Python script implementing the fine-tuning logic |
+| Data module | `--data-file` | Python module: `data.py` (see contract below) |
+| Evaluator module | `--evaluator-file` | Python module: `evaluator.py` (see contract below) |
+| Task key | `--key` | Optional; auto-generated as `task_<random>` if omitted |
 
 ---
 
-## Starting a New Experiment
-
-### Command
+## Starting a New Task
 
 ```bash
 python run.py \
-  --experiment-name <name> \
+  --key my-task \
   --checkpoint <model_id_or_local_path> \
-  --eval-file <path/to/eval.csv> \
-  --train-file <path/to/train.py>
+  --data-file path/to/data.py \
+  --evaluator-file path/to/evaluator.py
 ```
 
 ### What happens automatically
-1. Git repository is initialized if not already present
-2. A feature branch `feature/<name>-<timestamp>` is created
-3. Folder `experiments/<name>-<timestamp>/` is created
-4. Eval and train files are copied into that folder
-5. `meta.json` is written with experiment metadata
-6. The auto-research loop begins
+1. Git repository is initialized if not already present.
+2. The key is sanitized (lowercased, `[^a-z0-9_-]` → `_`) or auto-generated.
+3. A feature branch `feature/<key>` is created (or reused if it already exists).
+4. Folder `tasks/<key>/` is created with `data.py`, `evaluator.py`, and a copy of `auto_research/trainer.py` (the agent may modify the task's copy).
+5. `meta.json` is written with task metadata.
+6. A new `tasks/<key>/runs/<timestamp>/` is created for this run's results.
+7. The auto-research loop begins.
 
 ### Skip branch creation (for development)
 ```bash
-python run.py --no-branch --checkpoint ... --eval-file ... --train-file ...
+python run.py --no-branch --checkpoint ... --data-file ... --evaluator-file ...
 ```
+
+---
+
+## User-Provided Module Contracts
+
+### `data.py`
+
+Required:
+```python
+def load_train_dataset(seed: int = 42, subset: int | None = None,
+                       balance: str = "none", **kwargs) -> torch.utils.data.Dataset:
+    """Return a Dataset whose items are consumable by `get_collator`'s output."""
+
+def load_eval_dataset(seed: int = 42, subset: int | None = None, **kwargs):
+    """Return whatever evaluator.evaluate()'s `eval_data` argument expects."""
+```
+
+Optional:
+```python
+def get_collator(tokenizer, max_seq_len: int):
+    """Return a data collator. If absent, the trainer falls back to a default."""
+```
+
+### `evaluator.py`
+
+Required:
+```python
+def evaluate(adapter_dir: str, model_name: str, eval_data, **kwargs) -> dict:
+    """Return a dict including the primary metric. May also include 'n_eval' etc."""
+```
+
+Optional:
+```python
+PRIMARY_METRIC: str = "accuracy"  # name of the key in the returned dict to optimize
+```
+
+### `trainer.py` (template, modifiable per task)
+
+```python
+def train_one(cfg: ExperimentConfig, train_dataset, model_name: str,
+              output_dir: Path, collator=None, **kwargs) -> dict:
+    """Returns {"train_loss": float, "adapter_dir": str}"""
+```
+
+See `examples/product_comparison/` for a working reference implementation of all three.
 
 ---
 
@@ -70,13 +117,13 @@ python run.py --no-branch --checkpoint ... --eval-file ... --train-file ...
 |------|--------|----------------------------|
 | 1 | Verify environment (CUDA, RAM, VRAM) | Yes |
 | 2 | Confirm checkpoint and model size | Yes |
-| 3 | Confirm eval file format | Yes |
-| 4 | Confirm training file interface | Yes |
+| 3 | Confirm data.py and evaluator.py contracts | Yes |
+| 4 | Confirm task key (or accept auto-generated) | Yes |
 | 5 | Run smoke test | Yes |
 | 6 | Set high-level parameters (budget, strategy) | Yes |
 | 7 | Enter auto-research loop | No — agent runs autonomously |
 
-Training goal must be explicitly confirmed before entering Phase 2. Never default to a previous experiment's goal.
+Training goal must be explicitly confirmed before entering Phase 2.
 
 ### Phase 2: Auto-Research Loop (Agent Runs Autonomously)
 
@@ -88,7 +135,7 @@ baseline → confirm → explore one variable → evaluate → decide → repeat
 
 **Confirm run** — re-run with identical config. Proceed only if results agree within 5%.
 
-**Exploration order** (do not skip ahead):
+**Exploration order:**
 1. `lora_alpha`
 2. `lora_alpha` local refinement
 3. `learning_rate`
@@ -110,12 +157,10 @@ Top-K configs from exploration are re-run on the full eval set for definitive nu
 
 ### Phase 4: Reporting
 
-- `leaderboard.md` — ranked results for this experiment
+- `leaderboard.md` — ranked results for this task
 - `results.jsonl` — one JSON line per completed run
-- `runs/<exp_id>/adapter/` — LoRA adapter weights
+- `runs/<timestamp>/<exp_id>/adapter/` — LoRA adapter weights
 - Agent writes a summary: model, data, baseline metrics, best metrics, effective changes, checkpoint path, next recommendations
-
-If any parameter direction was untested or skipped, the report must note this. Only write "complete" if all directions were covered.
 
 ---
 
@@ -201,7 +246,7 @@ Every round changes exactly **one** parameter. If two things changed, the cause 
 - Save current state and record `status=crash, error=timeout`
 
 ### User Interrupt
-1. Save `resume_state.json` in the experiment folder
+1. Save `resume_state.json` in the run folder
 2. Save the current checkpoint
 3. Print: `Run paused. Resume with: python run.py --resume`
 
@@ -214,118 +259,36 @@ Every round changes exactly **one** parameter. If two things changed, the cause 
 3. Changing multiple parameters in a single round
 4. Asking the user for confirmation on every training round in Phase 2
 5. Ignoring VRAM safety boundaries
-6. Using different eval files for baseline vs. subsequent runs
+6. Using different eval data for baseline vs. subsequent runs
 7. Writing "experiment complete" when parameter directions remain untested
 
 ---
 
-## Training File Interface
-
-The Python file provided via `--train-file` must be callable as a subprocess:
-
-```bash
-python train.py \
-  --checkpoint <model_id_or_path> \
-  --data <path_to_training_data> \
-  --output-dir <adapter_output_path> \
-  --lora-r 16 \
-  --lora-alpha 32 \
-  --learning-rate 2e-4 \
-  --num-epochs 1 \
-  --batch-size 1 \
-  --grad-accum 16 \
-  --max-seq-length 512 \
-  --target-modules attn \
-  --dropout 0.05
-```
-
-It must print a JSON line to stdout upon completion:
-
-```json
-{"train_loss": 0.312, "adapter_dir": "experiments/my-exp/runs/run_001/adapter"}
-```
-
-Alternatively, the file may expose a `train()` function:
-
-```python
-def train(
-    checkpoint: str,
-    data_path: str,
-    output_dir: str,
-    lora_r: int = 16,
-    lora_alpha: int = 32,
-    learning_rate: float = 2e-4,
-    num_epochs: int = 1,
-    batch_size: int = 1,
-    grad_accum: int = 16,
-    max_seq_length: int = 512,
-    target_modules: str = "attn",
-    dropout: float = 0.05,
-    **kwargs,
-) -> dict:
-    """Returns {"train_loss": float, "adapter_dir": str}"""
-    ...
-```
-
----
-
-## Evaluation File Interface
-
-### Data file (CSV or JSONL)
-
-Used directly by the built-in evaluator. The file is passed as-is to the evaluation step.
-
-### Python evaluation script
-
-Must be callable as a subprocess:
-
-```bash
-python eval.py \
-  --adapter-dir <path_to_adapter> \
-  --data <eval_data_path>
-```
-
-Must print a JSON line to stdout:
-
-```json
-{"accuracy": 0.874, "f1": 0.871, "n_eval": 2000}
-```
-
-Or expose an `evaluate()` function:
-
-```python
-def evaluate(adapter_dir: str, data_path: str, **kwargs) -> dict:
-    """Returns {"accuracy": float, "f1": float, "n_eval": int, ...}"""
-    ...
-```
-
----
-
-## Experiment Folder Structure
+## Task Folder Structure
 
 ```
-experiments/<name>-<timestamp>/
-├── meta.json           # checkpoint, file paths, branch, created timestamp
-├── train.py            # copy of the provided training file
-├── eval.*              # copy of the provided evaluation file
-├── results.jsonl       # one JSON line per completed run
-├── leaderboard.md      # ranked results table
+tasks/<key>/
+├── meta.json           # checkpoint, branch, source paths, created timestamp
+├── data.py             # copy of the provided data module
+├── evaluator.py        # copy of the provided evaluator module
+├── trainer.py          # copy of auto_research/trainer.py (modifiable)
 └── runs/
-    └── <run_id>/
-        ├── config.json # LoRA config used for this run
-        └── adapter/    # LoRA adapter weights
+    └── <timestamp>/
+        ├── results.jsonl
+        ├── leaderboard.md
+        └── <exp_id>/
+            ├── config.json
+            └── adapter/
 ```
 
 ---
 
-## Resuming an Interrupted Experiment
+## Resuming an Interrupted Task
 
-The orchestrator reads `results.jsonl` at startup and skips any `exp_id` already present. Killing and restarting is safe:
+The orchestrator reads `results.jsonl` at startup and skips any `exp_id` already present in the current run folder. Killing and restarting is safe:
 
 ```bash
-python run.py --resume --experiment-name <name>
+python run.py --resume --key <key> --checkpoint ... --data-file ... --evaluator-file ...
 ```
 
----
-
-*Last updated: 2026-05-16*
+Reusing the same key reuses the branch and folder; a new `runs/<timestamp>/` is created each invocation.

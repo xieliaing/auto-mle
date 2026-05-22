@@ -18,6 +18,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from .prompts import build_messages, get_yes_no_token_ids
 
 
+PRIMARY_METRIC = "accuracy"
+
+
 def _load_for_eval(model_name: str, adapter_dir: Optional[str]):
     """Load 4-bit base model + (optional) LoRA adapter for evaluation."""
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -64,17 +67,19 @@ def _build_prompt_only_batch(rows, tokenizer, max_seq_len: int):
 
 @torch.no_grad()
 def evaluate(
-    eval_df: pd.DataFrame,
+    adapter_dir: Optional[str],
     model_name: str,
-    adapter_dir: Optional[str] = None,
+    eval_data: pd.DataFrame,
     batch_size: int = 8,
     max_seq_len: int = 512,
     progress: bool = True,
+    **kwargs,
 ) -> dict:
     """
-    Score every row of eval_df. Returns {accuracy, n_eval, tp, tn, fp, fn,
+    Score every row of eval_data. Returns {accuracy, n_eval, tp, tn, fp, fn,
     precision, recall, f1, yes_token_id, no_token_id}.
     """
+    eval_df = eval_data
     model, tokenizer = _load_for_eval(model_name, adapter_dir)
     yes_id, no_id = get_yes_no_token_ids(tokenizer)
 

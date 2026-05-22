@@ -37,9 +37,8 @@ PROPOSER_MAX_TOKENS = 1500
 # --- Seed plan ---------------------------------------------------------------
 
 def seed_plan() -> List[ExperimentConfig]:
-    """A fixed exploration plan that covers our three target axes."""
+    """A fixed exploration plan that covers the core tunable axes."""
     plan = [
-        # 1. Baseline: small LoRA on attention only, plain CE
         ExperimentConfig(
             exp_id="seed_01_baseline",
             hypothesis="Baseline: small LoRA on attention layers with standard cross-entropy.",
@@ -49,50 +48,45 @@ def seed_plan() -> List[ExperimentConfig]:
             data=DataConfigSpec(),
             loss=LossConfigSpec(name="ce"),
         ),
-        # 2. Bigger LoRA on all linear layers
         ExperimentConfig(
             exp_id="seed_02_bigger_lora",
-            hypothesis="A larger LoRA (r=32) targeting all linear projections should give the model more capacity to learn product-matching features.",
+            hypothesis="Larger LoRA (r=32) on all linear projections gives more capacity.",
             tier="small",
             lora=LoraConfigSpec(r=32, alpha=64, target_modules="all_linear"),
             train=TrainConfigSpec(learning_rate=1e-4, num_epochs=1.0),
             data=DataConfigSpec(),
             loss=LossConfigSpec(name="ce"),
         ),
-        # 3. Focal loss to focus on hard cases
         ExperimentConfig(
             exp_id="seed_03_focal",
-            hypothesis="Focal loss (gamma=2) should down-weight easy negatives and let the model focus learning capacity on ambiguous pairs.",
+            hypothesis="Focal loss (gamma=2) down-weights easy examples and focuses learning on hard ones.",
             tier="small",
             lora=LoraConfigSpec(r=16, alpha=32, target_modules="attn"),
             train=TrainConfigSpec(learning_rate=2e-4, num_epochs=1.0),
             data=DataConfigSpec(),
             loss=LossConfigSpec(name="focal", focal_gamma=2.0),
         ),
-        # 4. Label smoothing for calibration
         ExperimentConfig(
             exp_id="seed_04_label_smooth",
-            hypothesis="Label smoothing prevents over-confident predictions; small but consistent gains are common in classification.",
+            hypothesis="Label smoothing prevents over-confident predictions; small but consistent gains are common.",
             tier="small",
             lora=LoraConfigSpec(r=16, alpha=32, target_modules="attn"),
             train=TrainConfigSpec(learning_rate=2e-4, num_epochs=1.0),
             data=DataConfigSpec(),
             loss=LossConfigSpec(name="label_smoothing", label_smoothing=0.1),
         ),
-        # 5. Hard negative mining
         ExperimentConfig(
-            exp_id="seed_05_hard_negs",
-            hypothesis="Replacing 30% of negatives with title-similar pairs creates harder examples that should improve the model's discrimination on ambiguous cases.",
+            exp_id="seed_05_lower_lr",
+            hypothesis="A lower learning rate (5e-5) with the bigger LoRA can yield a more stable optimum.",
             tier="small",
-            lora=LoraConfigSpec(r=16, alpha=32, target_modules="attn"),
-            train=TrainConfigSpec(learning_rate=2e-4, num_epochs=1.0),
-            data=DataConfigSpec(hard_neg_frac=0.3),
+            lora=LoraConfigSpec(r=32, alpha=64, target_modules="all_linear"),
+            train=TrainConfigSpec(learning_rate=5e-5, num_epochs=1.0),
+            data=DataConfigSpec(),
             loss=LossConfigSpec(name="ce"),
         ),
-        # 6. Class-balanced data
         ExperimentConfig(
             exp_id="seed_06_balanced",
-            hypothesis="If the dataset is class-imbalanced, downsampling the majority class should yield a better-calibrated model on test.",
+            hypothesis="If the dataset is class-imbalanced, downsampling the majority class yields a better-calibrated model.",
             tier="small",
             lora=LoraConfigSpec(r=16, alpha=32, target_modules="attn"),
             train=TrainConfigSpec(learning_rate=2e-4, num_epochs=1.0),
@@ -105,15 +99,15 @@ def seed_plan() -> List[ExperimentConfig]:
 
 # --- LLM-driven proposer -----------------------------------------------------
 
-PROPOSER_SYSTEM = """You are an ML research advisor for a product-comparison fine-tuning project.
+PROPOSER_SYSTEM = """You are an ML research advisor for a LoRA fine-tuning project.
 
-Your job: given the history of completed experiments, propose ONE next experiment that is most likely to improve test accuracy. You must balance exploration and exploitation: don't just tweak the current best by epsilon, but also don't propose something wildly disconnected from what the data has shown.
+Your job: given the history of completed experiments, propose ONE next experiment that is most likely to improve the primary metric. You must balance exploration and exploitation: don't just tweak the current best by epsilon, but also don't propose something wildly disconnected from what the data has shown.
 
 You will respond with ONLY a single JSON object matching the ExperimentConfig schema. No markdown, no commentary, no code fences."""
 
 
 PROPOSER_USER_TEMPLATE = """## Task
-Binary product matching: given two product titles, predict whether they refer to the same product. Base model: {model_name} (4-bit QLoRA).
+LoRA fine-tuning of base model: {model_name} (4-bit QLoRA). The task's data loader and evaluator are supplied by the user; treat them as a black box and tune the LoRA/training/loss axes below.
 
 ## Schema (return JSON matching this shape)
 {{
@@ -140,11 +134,7 @@ Binary product matching: given two product titles, predict whether they refer to
   "data": {{
     "train_subset": int or null,
     "eval_subset": int or null,
-    "balance": "none | downsample | upsample",
-    "hard_neg_frac": float (0..0.7),
-    "augment_titles": bool,
-    "min_jaccard": float (0..1),
-    "max_jaccard": float (0..1)
+    "balance": "none | downsample | upsample"
   }},
   "loss": {{
     "name": "ce | label_smoothing | focal | weighted_ce",
@@ -162,7 +152,7 @@ Binary product matching: given two product titles, predict whether they refer to
 - Don't repeat a configuration that's already been tried.
 - Prefer ONE concrete change vs the current best (so we can attribute improvement). Combining changes is allowed but state why.
 
-## History (most recent first, accuracy is on test_pairs.csv)
+## History (most recent first, 'accuracy' is the run's primary metric)
 {history}
 
 ## Best so far

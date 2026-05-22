@@ -5,21 +5,35 @@ Two phases:
   Phase A: exploration on tier='small'. Runs until budget is hit or plateau.
   Phase B: promotion. Take top-K configs, re-run them at tier='full' for
            definitive numbers on the full test set.
+
+The orchestrator is task-agnostic: it dynamically imports the task's
+data.py, evaluator.py, and trainer.py from a task folder. Their contracts:
+
+    data.py
+        load_train_dataset(seed: int, subset: int | None, balance: str, **kw)
+        load_eval_dataset(seed: int, subset: int | None, **kw)
+        get_collator(tokenizer, max_seq_len) -> collator             # optional
+
+    evaluator.py
+        evaluate(adapter_dir, model_name, eval_data, **kw) -> dict
+        PRIMARY_METRIC: str                                          # optional, default "accuracy"
+
+    trainer.py
+        train_one(cfg, train_dataset, model_name, output_dir, collator=None, **kw)
+          -> {"train_loss": float, "adapter_dir": str}
 """
 from __future__ import annotations
 import gc
+import importlib.util
 import time
 import traceback
-from dataclasses import asdict
 from pathlib import Path
+from types import ModuleType
 from typing import Optional
 
 import torch
 
 from .schema import ExperimentConfig, ExperimentResult
-from .data import load_csv, apply_data_strategy, ProductPairDataset
-from .trainer import train_one
-from .evaluator import evaluate
 from .proposer import propose_next
 from .analyzer import (
     load_results, append_result, write_leaderboard,
@@ -27,70 +41,117 @@ from .analyzer import (
 )
 
 
+# --- Dynamic task-module loading --------------------------------------------
+
+def _load_task_module(name: str, path: str | Path) -> ModuleType:
+    """Import a Python file as a module, supporting relative imports in the
+    file's directory (treats the parent dir as a package). The parent dir
+    must contain an __init__.py for relative imports to resolve.
+    """
+    import sys
+    p = Path(path).resolve()
+    parent = p.parent
+    pkg_name = f"_automle_task_{parent.name}"
+
+    if (parent / "__init__.py").exists():
+        # Register the parent dir as a package so relative imports work.
+        if pkg_name not in sys.modules:
+            pkg_spec = importlib.util.spec_from_file_location(
+                pkg_name, parent / "__init__.py",
+                submodule_search_locations=[str(parent)],
+            )
+            pkg = importlib.util.module_from_spec(pkg_spec)
+            sys.modules[pkg_name] = pkg
+            pkg_spec.loader.exec_module(pkg)
+        full_name = f"{pkg_name}.{p.stem}"
+        spec = importlib.util.spec_from_file_location(full_name, p)
+    else:
+        full_name = name
+        spec = importlib.util.spec_from_file_location(full_name, p)
+
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load module {name} from {p}")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[full_name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _maybe_get_tokenizer(model_name: str):
+    """Load just the tokenizer (cheap, no GPU) so we can build the collator."""
+    from transformers import AutoTokenizer
+    tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    if tok.pad_token is None:
+        tok.pad_token = tok.eos_token
+    tok.padding_side = "right"
+    return tok
+
+
 def _free_gpu():
-    """Clear GPU between experiments to avoid cumulative fragmentation."""
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
 
 
+# --- One experiment ----------------------------------------------------------
+
 def run_one_experiment(
     cfg: ExperimentConfig,
-    train_csv: str,
-    eval_csv: str,
+    data_mod: ModuleType,
+    evaluator_mod: ModuleType,
+    trainer_mod: ModuleType,
     model_name: str,
     runs_dir: Path,
+    primary_metric: str,
 ) -> ExperimentResult:
     """Train + evaluate one config. Captures OOM and other errors gracefully."""
     cfg.apply_tier()
     run_dir = runs_dir / cfg.exp_id
     run_dir.mkdir(parents=True, exist_ok=True)
-
-    # Persist the config alongside the run for reproducibility
     (run_dir / "config.json").write_text(cfg.to_json())
 
     started = time.time()
     try:
-        # Build datasets
-        train_df_raw = load_csv(train_csv)
-        eval_df_raw = load_csv(eval_csv)
-        train_df = apply_data_strategy(train_df_raw, cfg.data, cfg.train.seed, is_train=True)
-        eval_df = apply_data_strategy(eval_df_raw, cfg.data, cfg.train.seed, is_train=False)
-
-        train_ds = ProductPairDataset(
-            train_df, augment=cfg.data.augment_titles, seed=cfg.train.seed,
+        train_ds = data_mod.load_train_dataset(
+            seed=cfg.train.seed,
+            subset=cfg.data.train_subset,
+            balance=cfg.data.balance,
+        )
+        eval_data = data_mod.load_eval_dataset(
+            seed=cfg.train.seed,
+            subset=cfg.data.eval_subset,
         )
 
-        # Train
-        train_out = train_one(cfg, train_ds, model_name, run_dir)
+        collator = None
+        if hasattr(data_mod, "get_collator"):
+            tokenizer = _maybe_get_tokenizer(model_name)
+            collator = data_mod.get_collator(tokenizer, cfg.train.max_seq_len)
+
+        train_out = trainer_mod.train_one(
+            cfg, train_ds, model_name, run_dir, collator=collator,
+        )
         _free_gpu()
 
-        # Evaluate
-        eval_out = evaluate(
-            eval_df,
-            model_name=model_name,
-            adapter_dir=train_out["adapter_dir"],
-            batch_size=8,
+        eval_out = evaluator_mod.evaluate(
+            train_out["adapter_dir"], model_name, eval_data,
             max_seq_len=cfg.train.max_seq_len,
         )
         _free_gpu()
 
+        primary = float(eval_out.get(primary_metric, 0.0))
+        n_eval = int(eval_out.get("n_eval", 0))
+        extra = {k: v for k, v in eval_out.items() if k not in (primary_metric, "n_eval")}
+
         return ExperimentResult(
             exp_id=cfg.exp_id,
             config=cfg.to_dict(),
-            accuracy=float(eval_out["accuracy"]),
-            n_eval=int(eval_out["n_eval"]),
+            accuracy=primary,
+            n_eval=n_eval,
             train_loss=float(train_out["train_loss"]),
             runtime_sec=float(time.time() - started),
             status="success",
-            extra={
-                "f1": eval_out["f1"],
-                "precision": eval_out["precision"],
-                "recall": eval_out["recall"],
-                "tp": eval_out["tp"], "tn": eval_out["tn"],
-                "fp": eval_out["fp"], "fn": eval_out["fn"],
-            },
+            extra=extra,
         )
     except torch.cuda.OutOfMemoryError as e:
         _free_gpu()
@@ -110,9 +171,12 @@ def run_one_experiment(
         )
 
 
+# --- Orchestration loop ------------------------------------------------------
+
 def orchestrate(
-    train_csv: str,
-    eval_csv: str,
+    data_path: str | Path,
+    evaluator_path: str | Path,
+    trainer_path: str | Path,
     model_name: str,
     results_dir: str | Path,
     budget: int = 10,
@@ -121,11 +185,12 @@ def orchestrate(
     target_accuracy: Optional[float] = None,
     skip_full_phase: bool = False,
 ) -> dict:
-    """
-    Run the full pipeline end-to-end.
+    """Run the full pipeline end-to-end against a task's plug-in modules."""
+    data_mod = _load_task_module("task_data", data_path)
+    evaluator_mod = _load_task_module("task_evaluator", evaluator_path)
+    trainer_mod = _load_task_module("task_trainer", trainer_path)
+    primary_metric = getattr(evaluator_mod, "PRIMARY_METRIC", "accuracy")
 
-    Returns a summary dict with the path to the leaderboard and the best result.
-    """
     results_dir = Path(results_dir)
     runs_dir = results_dir / "runs"
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -133,14 +198,14 @@ def orchestrate(
     results_path = results_dir / "results.jsonl"
     leaderboard_path = results_dir / "leaderboard.md"
 
-    # Resume: load any prior results so we don't duplicate work
     all_results = load_results(results_path)
     completed_ids = {r["exp_id"] for r in all_results}
     next_idx = len(all_results)
 
-    print(f"[orchestrate] Resuming with {len(all_results)} prior results. Budget: {budget}.")
+    print(f"[orchestrate] Resuming with {len(all_results)} prior results. "
+          f"Budget: {budget}. Primary metric: {primary_metric}.")
 
-    # --- Phase A: exploration at tier='small' ----------------------------------
+    # --- Phase A: exploration ---------------------------------------------
     while next_idx < budget:
         cfg = propose_next(
             results=all_results,
@@ -148,7 +213,6 @@ def orchestrate(
             next_idx=next_idx,
             use_llm=use_llm_proposer,
         )
-        # Defensive: ensure unique id
         if cfg.exp_id in completed_ids:
             cfg.exp_id = f"{cfg.exp_id}_v{next_idx}"
         completed_ids.add(cfg.exp_id)
@@ -156,23 +220,25 @@ def orchestrate(
         print(f"\n=== [{next_idx + 1}/{budget}] {cfg.exp_id} ===")
         print(f"hypothesis: {cfg.hypothesis}")
 
-        result = run_one_experiment(cfg, train_csv, eval_csv, model_name, runs_dir)
+        result = run_one_experiment(
+            cfg, data_mod, evaluator_mod, trainer_mod,
+            model_name, runs_dir, primary_metric,
+        )
         result_dict = result.to_dict()
         append_result(results_path, result_dict)
         all_results.append(result_dict)
         write_leaderboard(all_results, leaderboard_path)
 
         if result.status == "success":
-            print(f"  -> accuracy = {result.accuracy:.4f} (n={result.n_eval}, "
+            print(f"  -> {primary_metric} = {result.accuracy:.4f} (n={result.n_eval}, "
                   f"loss={result.train_loss:.4f}, {result.runtime_sec:.0f}s)")
         else:
             print(f"  -> FAILED: {result.status}: {result.error[:200]}")
 
-        # Early stop conditions
         if target_accuracy is not None:
             best = best_so_far(all_results)
             if best is not None and best["accuracy"] >= target_accuracy:
-                print(f"[orchestrate] target accuracy {target_accuracy} reached — stopping exploration.")
+                print(f"[orchestrate] target {primary_metric} {target_accuracy} reached — stopping exploration.")
                 break
         if has_plateaued(all_results, window=4, min_delta=0.002):
             print("[orchestrate] plateau detected (no improvement >0.2% in last 4 runs) — stopping exploration.")
@@ -180,7 +246,7 @@ def orchestrate(
 
         next_idx += 1
 
-    # --- Phase B: promote top-K to tier='full' ---------------------------------
+    # --- Phase B: promote top-K -------------------------------------------
     summary = {
         "leaderboard": str(leaderboard_path),
         "results": str(results_path),
@@ -202,16 +268,19 @@ def orchestrate(
         if cfg.exp_id in completed_ids:
             print(f"[orchestrate] {cfg.exp_id} already exists, skipping.")
             continue
-        cfg.notes = f"Full-tier rerun of {r['exp_id']} (small acc={r['accuracy']:.4f})."
+        cfg.notes = f"Full-tier rerun of {r['exp_id']} (small {primary_metric}={r['accuracy']:.4f})."
 
         print(f"\n=== FULL: {cfg.exp_id} ===")
-        result = run_one_experiment(cfg, train_csv, eval_csv, model_name, runs_dir)
+        result = run_one_experiment(
+            cfg, data_mod, evaluator_mod, trainer_mod,
+            model_name, runs_dir, primary_metric,
+        )
         result_dict = result.to_dict()
         append_result(results_path, result_dict)
         all_results.append(result_dict)
         write_leaderboard(all_results, leaderboard_path)
         if result.status == "success":
-            print(f"  -> FULL accuracy = {result.accuracy:.4f} (n={result.n_eval})")
+            print(f"  -> FULL {primary_metric} = {result.accuracy:.4f} (n={result.n_eval})")
         else:
             print(f"  -> FAILED: {result.status}")
 

@@ -5,14 +5,16 @@
 # Base model: HuggingFace model ID or absolute/relative path to a local checkpoint.
 checkpoint: Qwen/Qwen3-1.7B
 
-# Evaluation file: CSV/JSONL dataset or a Python eval script.
-eval_file: data/eval.csv
+# User-provided data.py exposing load_train_dataset / load_eval_dataset.
+data_file: examples/product_comparison/data.py
 
-# Training Python file implementing the fine-tuning logic.
-train_file: train.py
+# User-provided evaluator.py exposing evaluate(adapter_dir, model_name, eval_data).
+evaluator_file: examples/product_comparison/evaluator.py
 
-# --- Experiment identity ----------------------------------------------------
-experiment_name: experiment
+# --- Task identity ----------------------------------------------------------
+# Task key — used for the feature branch and tasks/<key>/ folder.
+# Leave blank to auto-generate (task_<random>).
+key:
 
 # --- Auto-research loop controls --------------------------------------------
 budget: 10          # max exploration runs before promotion phase

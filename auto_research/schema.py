@@ -38,18 +38,11 @@ class TrainConfigSpec:
 
 @dataclass
 class DataConfigSpec:
-    # How many training pairs to use this run. None = use all.
+    # How many training/eval examples to use this run. None = use all.
     train_subset: Optional[int] = 20_000
     eval_subset: Optional[int] = 2_000
-    # Class balancing strategy
+    # Class balancing strategy (applies when the task's data.py honors it).
     balance: Literal["none", "downsample", "upsample"] = "none"
-    # Hard-negative mining: replace `hard_neg_frac` of negatives with title-similar pairs
-    hard_neg_frac: float = 0.0
-    # Title augmentation (lowercase, drop tokens, swap order, etc.)
-    augment_titles: bool = False
-    # Filter pairs whose titles share too many tokens (data cleaning)
-    min_jaccard: float = 0.0  # 0 = no filter
-    max_jaccard: float = 1.0  # 1 = no filter
 
 
 @dataclass
