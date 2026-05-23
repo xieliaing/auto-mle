@@ -1,22 +1,28 @@
 """
-Generate a competition-aware baseline model using Claude.
+Generate a competition-aware baseline model using an AI model.
 
-Claude reads the competition overview, evaluation metric, and data schema, then
+The AI reads the competition overview, evaluation metric, and data schema, then
 reasons about the problem before choosing and implementing an appropriate approach.
-The output is NOT a generic sklearn/XGBoost template — it reflects Claude's
+The output is NOT a generic sklearn/XGBoost template — it reflects the model's
 understanding of this specific competition.
 
 Two sources of baselines are supported:
   1. Human-provided  — user writes baseline.py, data.py, evaluator.py manually
-  2. AI-generated    — this module calls Claude to generate them
+  2. AI-generated    — this module calls an AI to generate them
 
-Calls the Anthropic Messages API directly via requests (no anthropic package needed).
+Supported providers (all via direct HTTP, no extra packages needed):
+  anthropic        — Anthropic Claude API (default); requires ANTHROPIC_API_KEY
+  openai           — OpenAI or any OpenAI-compatible API; requires OPENAI_API_KEY
+                     Pass --ai-base-url to target a different endpoint, e.g.:
+                       https://api.groq.com/openai/v1  (Groq)
+                       http://localhost:11434/v1        (Ollama)
+                       http://localhost:1234/v1         (LM Studio)
 
 Generated files (written to output_dir):
-  baseline.py   — standalone model script (approach chosen by Claude)
-  data.py       — AutoMLE data module (text framing for LLM fine-tuning)
-  evaluator.py  — AutoMLE evaluator module
-  _reasoning.txt — Claude's stated reasoning before the code
+  baseline.py    — standalone model script (approach chosen by the AI)
+  data.py        — AutoMLE data module (text framing for LLM fine-tuning)
+  evaluator.py   — AutoMLE evaluator module
+  _reasoning.txt — AI's stated reasoning before the code
 """
 from __future__ import annotations
 import json
@@ -27,17 +33,17 @@ from pathlib import Path
 import requests
 
 _ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
-_MODEL = "claude-sonnet-4-6"
+_OPENAI_DEFAULT_BASE = "https://api.openai.com/v1"
+
+_DEFAULT_MODELS = {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o",
+}
+
 _MAX_TOKENS = 8192
 
 
-def _call_claude(prompt: str) -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise EnvironmentError(
-            "ANTHROPIC_API_KEY environment variable not set.\n"
-            "Set it with: set ANTHROPIC_API_KEY=sk-ant-..."
-        )
+def _call_anthropic(prompt: str, model: str, api_key: str) -> str:
     resp = requests.post(
         _ANTHROPIC_URL,
         headers={
@@ -46,7 +52,7 @@ def _call_claude(prompt: str) -> str:
             "content-type": "application/json",
         },
         json={
-            "model": _MODEL,
+            "model": model,
             "max_tokens": _MAX_TOKENS,
             "messages": [{"role": "user", "content": prompt}],
         },
@@ -54,6 +60,63 @@ def _call_claude(prompt: str) -> str:
     )
     resp.raise_for_status()
     return resp.json()["content"][0]["text"]
+
+
+def _call_openai_compat(prompt: str, model: str, api_key: str, base_url: str) -> str:
+    resp = requests.post(
+        f"{base_url.rstrip('/')}/chat/completions",
+        headers={
+            "content-type": "application/json",
+            "Authorization": f"Bearer {api_key or 'local'}",
+        },
+        json={
+            "model": model,
+            "max_tokens": _MAX_TOKENS,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"]
+
+
+def _resolve_key(provider: str, explicit_key: str | None) -> str:
+    if explicit_key is not None:
+        return explicit_key
+    env_var = "ANTHROPIC_API_KEY" if provider == "anthropic" else "OPENAI_API_KEY"
+    return os.environ.get(env_var, "")
+
+
+def _call_ai(
+    prompt: str,
+    *,
+    provider: str = "anthropic",
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> str:
+    resolved_key = _resolve_key(provider, api_key)
+    resolved_model = model or _DEFAULT_MODELS.get(provider, "gpt-4o")
+
+    if provider == "anthropic":
+        if not resolved_key:
+            raise EnvironmentError(
+                "ANTHROPIC_API_KEY environment variable not set.\n"
+                "Set it with: set ANTHROPIC_API_KEY=sk-ant-...\n"
+                "Or switch provider: --ai-provider openai with OPENAI_API_KEY."
+            )
+        return _call_anthropic(prompt, resolved_model, resolved_key)
+
+    # openai / openai-compatible (Groq, Together, Ollama, LM Studio, ...)
+    resolved_base = base_url or _OPENAI_DEFAULT_BASE
+    is_local = resolved_base != _OPENAI_DEFAULT_BASE
+    if not resolved_key and not is_local:
+        raise EnvironmentError(
+            "OPENAI_API_KEY environment variable not set.\n"
+            "Set it with: set OPENAI_API_KEY=sk-...\n"
+            "For local servers (Ollama, LM Studio) pass --ai-base-url and optionally --ai-api-key."
+        )
+    return _call_openai_compat(prompt, resolved_model, resolved_key, resolved_base)
 
 
 def _build_prompt(info: dict, schema: dict) -> str:
@@ -204,24 +267,37 @@ def generate_baseline(
     competition_info: dict,
     data_schema: dict,
     output_dir: str | Path,
+    *,
+    provider: str = "anthropic",
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
 ) -> dict[str, Path]:
     """
-    Ask Claude to reason about the competition and generate baseline.py,
+    Ask an AI to reason about the competition and generate baseline.py,
     data.py, and evaluator.py. Writes all files to output_dir.
+
+    provider: 'anthropic' (default) or 'openai' (covers any OpenAI-compatible API).
+    model: overrides the provider default (claude-sonnet-4-6 / gpt-4o).
+    api_key: overrides ANTHROPIC_API_KEY / OPENAI_API_KEY env vars.
+    base_url: OpenAI-compatible endpoint, e.g. http://localhost:11434/v1 for Ollama.
 
     Returns {filename: Path} for the written files.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    resolved_model = model or _DEFAULT_MODELS.get(provider, "gpt-4o")
+    provider_label = f"{resolved_model} ({provider})"
+
     schema_copy = json.loads(json.dumps(data_schema))
     prompt = _build_prompt(competition_info, schema_copy)
 
-    print("[baseline_gen] Sending competition context to Claude for analysis...")
-    response = _call_claude(prompt)
+    print(f"[baseline_gen] Sending competition context to {provider_label} for analysis...")
+    response = _call_ai(prompt, provider=provider, model=model, api_key=api_key, base_url=base_url)
 
     # Save full raw response
-    raw_path = output_dir / "_claude_response.txt"
+    raw_path = output_dir / "_ai_response.txt"
     raw_path.write_text(response, encoding="utf-8")
 
     reasoning, blocks = _split_reasoning_and_blocks(response)
@@ -230,8 +306,7 @@ def generate_baseline(
     if reasoning:
         reasoning_path = output_dir / "_reasoning.txt"
         reasoning_path.write_text(reasoning, encoding="utf-8")
-        print(f"[baseline_gen] Claude's reasoning → {reasoning_path.name}")
-        # Print reasoning so user can see Claude's competition analysis
+        print(f"[baseline_gen] Reasoning → {reasoning_path.name}")
         print("\n" + "─" * 60)
         print(reasoning[:1200] + ("…" if len(reasoning) > 1200 else ""))
         print("─" * 60 + "\n")

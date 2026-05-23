@@ -30,7 +30,7 @@ AutoMLE/
 │   ├── fetcher.py                # fetch competition overview + data manifest via Kaggle API
 │   ├── downloader.py             # download and extract competition data files
 │   ├── inspector.py              # inspect CSV schema (columns, types, missing rates, samples)
-│   ├── baseline_gen.py           # generate competition-aware baseline via Claude
+│   ├── baseline_gen.py           # generate competition-aware baseline via AI (Claude, OpenAI, or local)
 │   └── setup.py                  # orchestration CLI (auth → fetch → download → inspect → baseline)
 │
 ├── examples/
@@ -92,7 +92,7 @@ The `kaggle/` package sets up a Kaggle competition as an AutoMLE task in one com
 **Run setup**
 
 ```bash
-# Downloads data, inspects schema, generates a competition-aware baseline
+# Downloads data, inspects schema, generates a competition-aware baseline (uses Anthropic Claude by default)
 python -m kaggle.setup --competition titanic
 
 # Reuse already-downloaded data, skip baseline generation
@@ -110,17 +110,51 @@ kaggle/tasks/titanic/
 ├── data_schema.json         # column types, missing rates, sample values per file
 ├── data/                    # train.csv, test.csv, sample_submission.csv, ...
 └── baseline/
-    ├── baseline.py          # competition-specific model (approach chosen by Claude)
+    ├── baseline.py          # competition-specific model (approach chosen by the AI)
     ├── data.py              # AutoMLE data module (text framing for LLM fine-tuning)
     ├── evaluator.py         # AutoMLE evaluator module
-    └── _reasoning.txt       # Claude's analysis of the competition before generating code
+    ├── _reasoning.txt       # AI's analysis of the competition before generating code
+    └── _ai_response.txt     # full raw response from the AI
 ```
 
 **Baseline generation**
 
-The baseline is not a generic template. Claude reads the competition overview and data schema, reasons about the problem (task type, metric semantics, feature domain meanings), then chooses an appropriate implementation. The reasoning is saved to `_reasoning.txt` for review.
+The baseline is not a generic template. The AI reads the competition overview and data schema, reasons about the problem (task type, metric semantics, feature domain meanings), then chooses an appropriate implementation. The reasoning is saved to `_reasoning.txt` for review.
 
 A baseline can also be written by hand — `data.py` and `evaluator.py` just need to satisfy the [module contracts](#plugging-in-a-new-task) below.
+
+**AI provider options**
+
+Baseline generation supports Anthropic Claude (default), OpenAI, and any OpenAI-compatible API including local servers. The `openai` provider covers all of these — only the base URL differs.
+
+```bash
+# Anthropic Claude (default) — set ANTHROPIC_API_KEY
+python -m kaggle.setup --competition titanic
+
+# OpenAI GPT-4o — set OPENAI_API_KEY
+python -m kaggle.setup --competition titanic --ai-provider openai
+
+# OpenAI with a specific model
+python -m kaggle.setup --competition titanic --ai-provider openai --ai-model o3-mini
+
+# Groq or other OpenAI-compatible cloud — set OPENAI_API_KEY (or --ai-api-key)
+python -m kaggle.setup --competition titanic \
+    --ai-base-url https://api.groq.com/openai/v1 \
+    --ai-model llama-3.3-70b-versatile
+
+# Ollama (local, no API key required)
+python -m kaggle.setup --competition titanic \
+    --ai-base-url http://localhost:11434/v1 \
+    --ai-model llama3.2 \
+    --ai-api-key local
+
+# LM Studio (local)
+python -m kaggle.setup --competition titanic \
+    --ai-base-url http://localhost:1234/v1 \
+    --ai-model local-model
+```
+
+> `--ai-base-url` automatically implies `--ai-provider openai`. For local servers, passing any non-empty string as `--ai-api-key` (e.g. `local`) satisfies the `Authorization: Bearer` header without needing a real key.
 
 **Plug into AutoMLE**
 
