@@ -123,6 +123,20 @@ The baseline is not a generic template. The AI reads the competition overview an
 
 A baseline can also be written by hand — `data.py` and `evaluator.py` just need to satisfy the [module contracts](#plugging-in-a-new-task) below.
 
+**Which path to take after setup**
+
+`kaggle.setup` always generates three files. Which ones you use depends on the competition type:
+
+| Competition type | Right tool | Use |
+|---|---|---|
+| Tabular (classification, regression) | XGBoost, LightGBM, sklearn | `baseline.py` only |
+| Time series forecasting | statsmodels, Prophet, XGBoost | `baseline.py` only |
+| Text: classification, NER, Q&A, summarization | LLM fine-tuning (LoRA) | `data.py` + `evaluator.py` → `run.py` |
+| Vision-language, document understanding | VLLM fine-tuning (LoRA) | `data.py` + `evaluator.py` → `run.py` |
+| Any prompt-in / token-out problem | LLM fine-tuning (LoRA) | `data.py` + `evaluator.py` → `run.py` |
+
+LLMs are not competitive on structured numeric inputs. For tabular and time-series competitions, run `baseline.py` directly and iterate on feature engineering and model selection there — the LoRA loop adds no value. Reserve the AutoMLE fine-tuning loop for competitions where the input can be expressed as a natural-language prompt and the output is either generated text or scored via token-level logits (e.g. `logit[Yes]` vs `logit[No]` at the answer position).
+
 **AI provider options**
 
 Baseline generation supports Anthropic Claude (default), OpenAI, and any OpenAI-compatible API including local servers. The `openai` provider covers all of these — only the base URL differs.
@@ -158,15 +172,18 @@ python -m kaggle.setup --competition titanic \
 
 **Plug into AutoMLE**
 
-Once you have `data.py` and `evaluator.py` (human-written or AI-generated), run the LoRA fine-tuning loop:
+For competitions where the input is naturally a prompt (text classification, NER, Q&A, summarization, VQA, document understanding, etc.), feed `data.py` and `evaluator.py` into the LoRA fine-tuning loop. The `data.py` module frames each row as a conversational turn; the `evaluator.py` module scores predictions either by parsing generated text or by reading `logit[Yes]` vs `logit[No]` at the answer token position.
 
 ```bash
+# Example: a text-native competition (sentiment, NLP classification, VQA, ...)
 python run.py \
-    --key titanic \
+    --key <competition-slug> \
     --checkpoint Qwen/Qwen3-1.7B \
-    --data-file kaggle/tasks/titanic/baseline/data.py \
-    --evaluator-file kaggle/tasks/titanic/baseline/evaluator.py
+    --data-file kaggle/tasks/<competition-slug>/baseline/data.py \
+    --evaluator-file kaggle/tasks/<competition-slug>/baseline/evaluator.py
 ```
+
+For tabular or time-series competitions, skip this step — run `baseline/baseline.py` directly instead.
 
 ## Try the reference task
 
