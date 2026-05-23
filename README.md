@@ -25,6 +25,14 @@ AutoMLE/
 │   ├── orchestrator.py           # the autonomous loop (Phase A: explore, Phase B: promote)
 │   └── trainer.py                # generic QLoRA trainer template (copied per task)
 │
+├── kaggle/                       # Kaggle competition integration
+│   ├── auth.py                   # load ~/.kaggle/kaggle.json credentials
+│   ├── fetcher.py                # fetch competition overview + data manifest via Kaggle API
+│   ├── downloader.py             # download and extract competition data files
+│   ├── inspector.py              # inspect CSV schema (columns, types, missing rates, samples)
+│   ├── baseline_gen.py           # generate competition-aware baseline via Claude
+│   └── setup.py                  # orchestration CLI (auth → fetch → download → inspect → baseline)
+│
 ├── examples/
 │   └── product_comparison/       # reference task: text-only binary product matching
 │       ├── data.py
@@ -70,6 +78,61 @@ After it finishes:
 - `tasks/<key>/runs/<timestamp>/<exp_id>/adapter/` — the LoRA adapter for each run
 
 If `--key` is omitted, a `task_<random>` key is auto-generated.
+
+## Kaggle competitions
+
+The `kaggle/` package sets up a Kaggle competition as an AutoMLE task in one command.
+
+**Prerequisites**
+
+1. Get your Kaggle API token: [kaggle.com/settings/account](https://www.kaggle.com/settings/account) → API → Create New Token
+2. Save the downloaded file to `~/.kaggle/kaggle.json`
+3. Accept the competition rules on the Kaggle website (required before API downloads work)
+
+**Run setup**
+
+```bash
+# Downloads data, inspects schema, generates a competition-aware baseline
+python -m kaggle.setup --competition titanic
+
+# Reuse already-downloaded data, skip baseline generation
+python -m kaggle.setup --competition titanic --skip-download --skip-baseline
+
+# Custom output location
+python -m kaggle.setup --competition titanic --output-dir data/titanic
+```
+
+Output written to `kaggle/tasks/<competition>/`:
+
+```
+kaggle/tasks/titanic/
+├── competition_info.json    # title, description, evaluation metric, file list
+├── data_schema.json         # column types, missing rates, sample values per file
+├── data/                    # train.csv, test.csv, sample_submission.csv, ...
+└── baseline/
+    ├── baseline.py          # competition-specific model (approach chosen by Claude)
+    ├── data.py              # AutoMLE data module (text framing for LLM fine-tuning)
+    ├── evaluator.py         # AutoMLE evaluator module
+    └── _reasoning.txt       # Claude's analysis of the competition before generating code
+```
+
+**Baseline generation**
+
+The baseline is not a generic template. Claude reads the competition overview and data schema, reasons about the problem (task type, metric semantics, feature domain meanings), then chooses an appropriate implementation. The reasoning is saved to `_reasoning.txt` for review.
+
+A baseline can also be written by hand — `data.py` and `evaluator.py` just need to satisfy the [module contracts](#plugging-in-a-new-task) below.
+
+**Plug into AutoMLE**
+
+Once you have `data.py` and `evaluator.py` (human-written or AI-generated), run the LoRA fine-tuning loop:
+
+```bash
+python run.py \
+    --key titanic \
+    --checkpoint Qwen/Qwen3-1.7B \
+    --data-file kaggle/tasks/titanic/baseline/data.py \
+    --evaluator-file kaggle/tasks/titanic/baseline/evaluator.py
+```
 
 ## Try the reference task
 
