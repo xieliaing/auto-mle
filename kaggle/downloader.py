@@ -12,20 +12,21 @@ from pathlib import Path
 
 import requests
 
-from .auth import http_auth
+from .auth import bearer_headers
 
 _BASE = "https://www.kaggle.com/api/v1"
 _CHUNK = 1 << 17  # 128 KB chunks
 
 
-def _stream_to_file(url: str, auth: tuple, dest: Path) -> None:
+def _stream_to_file(url: str, dest: Path, slug: str = "") -> None:
     """Stream a potentially large response to disk with progress reporting."""
-    with requests.get(url, auth=auth, stream=True, allow_redirects=True, timeout=300) as r:
+    headers = bearer_headers()
+    with requests.get(url, headers=headers, stream=True, allow_redirects=True, timeout=300) as r:
         if r.status_code == 403:
+            rules_url = f"https://www.kaggle.com/c/{slug}/rules" if slug else "the competition rules page"
             raise PermissionError(
-                f"Kaggle returned 403 for this download.\n"
-                "Accept the competition rules at the Kaggle website first:\n"
-                "  https://www.kaggle.com/c/<competition>/rules"
+                f"Kaggle returned 403 — competition rules not yet accepted.\n"
+                f"Visit {rules_url} and click 'I Understand and Accept'."
             )
         r.raise_for_status()
         total = int(r.headers.get("Content-Length", 0))
@@ -35,10 +36,8 @@ def _stream_to_file(url: str, auth: tuple, dest: Path) -> None:
                 if chunk:
                     f.write(chunk)
                     downloaded += len(chunk)
-        if total:
-            print(f"    {dest.name}: {downloaded / 1e6:.1f} MB")
-        else:
-            print(f"    {dest.name}: {downloaded / 1e6:.1f} MB (size unknown)")
+        size_str = f"{downloaded / 1e6:.1f} MB"
+        print(f"    {dest.name}: {size_str}")
 
 
 def _unzip(zip_path: Path, dest_dir: Path) -> list[Path]:
@@ -63,16 +62,16 @@ def download_competition_data(slug: str, dest_dir: str | Path) -> list[Path]:
       3. Delete the zip archive.
 
     Returns a sorted list of extracted file paths.
+    Raises PermissionError if competition rules have not been accepted on the website.
     """
     dest = Path(dest_dir)
     dest.mkdir(parents=True, exist_ok=True)
-    auth = http_auth()
 
     zip_path = dest / f"{slug}.zip"
     url = f"{_BASE}/competitions/data/download-all/{slug}"
 
     print(f"[downloader] GET {url}")
-    _stream_to_file(url, auth, zip_path)
+    _stream_to_file(url, zip_path, slug=slug)
 
     if not zipfile.is_zipfile(zip_path):
         # Some competitions return the file directly (not zipped).
@@ -103,10 +102,8 @@ def download_file(slug: str, filename: str, dest_dir: str | Path) -> Path:
     """Download a single named file from the competition data."""
     dest = Path(dest_dir)
     dest.mkdir(parents=True, exist_ok=True)
-    auth = http_auth()
-
     url = f"{_BASE}/competitions/data/download/{slug}/{filename}"
     out = dest / filename
     print(f"[downloader] Downloading {filename}")
-    _stream_to_file(url, auth, out)
+    _stream_to_file(url, out, slug=slug)
     return out

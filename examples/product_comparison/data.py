@@ -145,22 +145,19 @@ def _balance(df: pd.DataFrame, mode: str, rng: random.Random) -> pd.DataFrame:
 
 # --- Torch dataset ------------------------------------------------------------
 
-class ProductPairDataset:
+try:
+    from torch.utils.data import Dataset as _TorchDataset  # type: ignore
+except ImportError:
+    _TorchDataset = object  # type: ignore
+
+
+class ProductPairDataset(_TorchDataset):
     """
     Holds the post-processed DataFrame and serves dicts:
         {"messages": [...chat...], "label": int, "title1": str, "title2": str}
     """
 
-    _registered = False
-
     def __init__(self, df: pd.DataFrame, augment: bool = False, seed: int = 0):
-        if not ProductPairDataset._registered:
-            try:
-                from torch.utils.data import Dataset  # type: ignore
-                Dataset.register(ProductPairDataset)
-                ProductPairDataset._registered = True
-            except ImportError:
-                pass
         self.df = df.reset_index(drop=True)
         self.augment = augment
         self._rng = random.Random(seed)

@@ -211,6 +211,7 @@ def propose_next(
     model_name: str,
     next_idx: int,
     use_llm: bool = True,
+    skill_context: str = "",
 ) -> ExperimentConfig:
     """
     Propose the next experiment config.
@@ -227,14 +228,14 @@ def propose_next(
     # Phase 2: LLM-driven
     if use_llm:
         try:
-            return _propose_via_llm(results, model_name)
+            return _propose_via_llm(results, model_name, skill_context=skill_context)
         except Exception as e:
             print(f"[proposer] LLM proposal failed: {type(e).__name__}: {e}")
             print("[proposer] falling back to heuristic")
     return _heuristic_fallback(results, next_idx)
 
 
-def _propose_via_llm(results: List[dict], model_name: str) -> ExperimentConfig:
+def _propose_via_llm(results: List[dict], model_name: str, skill_context: str = "") -> ExperimentConfig:
     """Call Claude to propose the next config. Raises on any failure."""
     try:
         import anthropic
@@ -252,6 +253,8 @@ def _propose_via_llm(results: List[dict], model_name: str) -> ExperimentConfig:
         history=_format_history(results),
         best=_format_best(results),
     )
+    if skill_context:
+        user_msg += f"\n\n{skill_context}"
 
     resp = client.messages.create(
         model=PROPOSER_MODEL,

@@ -69,7 +69,7 @@ def parse_args(argv=None):
 
 
 def _load_yaml(path: str) -> dict:
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 

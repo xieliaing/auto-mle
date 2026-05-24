@@ -2,12 +2,14 @@
 Smoke test for non-GPU parts of the pipeline.
 
 Validates:
-  - schema.ExperimentConfig round-trips through dict/JSON
-  - data.apply_data_strategy actually balances / mines hard negatives
-  - prompts.build_messages produces the expected chat structure
-  - proposer.seed_plan returns 6 distinct experiments
-  - analyzer.write_leaderboard produces non-empty markdown
+  - auto_research.schema round-trips through dict/JSON
+  - tier presets behave correctly
+  - proposer.seed_plan returns 6 distinct experiments using only the
+    task-agnostic schema fields
+  - analyzer.write_leaderboard + plateau detection + top_k work
   - proposer._heuristic_fallback works without ANTHROPIC_API_KEY
+  - the product-comparison example exposes the data/evaluator interface
+    and its prompts + dataset round-trip
 
 Run with:  python smoke_test.py
 """
@@ -22,13 +24,18 @@ from auto_research.schema import (
     ExperimentConfig, LoraConfigSpec, TrainConfigSpec, DataConfigSpec, LossConfigSpec,
     ExperimentResult,
 )
-from auto_research.prompts import build_messages, label_to_answer
-from auto_research.data import apply_data_strategy, ProductPairDataset, _jaccard
 from auto_research.proposer import seed_plan, _heuristic_fallback
 from auto_research.analyzer import (
     append_result, load_results, write_leaderboard, has_plateaued, top_k,
 )
 
+from examples.product_comparison.prompts import build_messages, label_to_answer
+from examples.product_comparison.data import (
+    load_train_dataset, load_eval_dataset, ProductPairDataset, _jaccard,
+)
+
+
+# --- auto_research/ tests ----------------------------------------------------
 
 def test_schema_roundtrip():
     cfg = ExperimentConfig(
@@ -47,6 +54,14 @@ def test_schema_roundtrip():
     print("[ok] schema roundtrip")
 
 
+def test_dataconfig_is_task_agnostic():
+    fields = set(DataConfigSpec.__dataclass_fields__)
+    assert fields == {"train_subset", "eval_subset", "balance"}, (
+        f"DataConfigSpec should be task-agnostic; got fields={fields}"
+    )
+    print("[ok] DataConfigSpec is task-agnostic")
+
+
 def test_apply_tier():
     cfg = ExperimentConfig(exp_id="t02", hypothesis="x", tier="full")
     cfg.apply_tier()
@@ -58,19 +73,102 @@ def test_apply_tier():
     print("[ok] tier preset application")
 
 
-def test_prompts():
-    msgs = build_messages("Apple iPhone 15 128GB", "iPhone 15 128GB", answer="Yes")
-    assert len(msgs) == 3
-    assert msgs[0]["role"] == "system"
-    assert msgs[1]["role"] == "user"
-    assert msgs[2]["role"] == "assistant"
-    assert msgs[2]["content"] == "Yes"
-    assert label_to_answer(1) == "Yes"
-    assert label_to_answer(0) == "No"
-    msgs2 = build_messages("a", "b")
-    assert len(msgs2) == 2  # no assistant turn when answer=None
-    print("[ok] prompt construction")
+def test_seed_plan():
+    plan = seed_plan()
+    assert len(plan) == 6
+    ids = [p.exp_id for p in plan]
+    assert len(set(ids)) == 6
+    losses_used = {p.loss.name for p in plan}
+    assert "focal" in losses_used
+    assert "label_smoothing" in losses_used
+    assert any(p.data.balance != "none" for p in plan)
+    print(f"[ok] seed plan ({len(plan)} experiments, losses={sorted(losses_used)})")
 
+
+def test_heuristic_fallback():
+    cfg = _heuristic_fallback([], next_idx=0)
+    assert cfg.exp_id == "seed_01_baseline"
+
+    fake_results = [{
+        "exp_id": "seed_01_baseline",
+        "config": ExperimentConfig(
+            exp_id="seed_01_baseline", hypothesis="x",
+            lora=LoraConfigSpec(r=8, alpha=16),
+            loss=LossConfigSpec(name="ce"),
+        ).to_dict(),
+        "accuracy": 0.85,
+        "status": "success",
+    }]
+    cfg2 = _heuristic_fallback(fake_results, next_idx=1)
+    assert cfg2.exp_id == "heuristic_001"
+    assert cfg2.lora.r == 16
+    assert cfg2.loss.name == "focal"
+    print("[ok] heuristic fallback")
+
+
+def test_analyzer():
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        results_path = td / "results.jsonl"
+        leaderboard_path = td / "leaderboard.md"
+
+        accs = [0.80, 0.86, 0.87, 0.870, 0.871, 0.870, 0.871]
+        for i, acc in enumerate(accs):
+            r = ExperimentResult(
+                exp_id=f"exp_{i}",
+                config=ExperimentConfig(
+                    exp_id=f"exp_{i}", hypothesis="t",
+                    lora=LoraConfigSpec(r=8 * (1 + i % 2)),
+                ).to_dict(),
+                accuracy=acc, n_eval=2000, train_loss=0.1,
+                runtime_sec=600.0, status="success",
+                extra={"f1": acc - 0.01},
+            )
+            append_result(results_path, r.to_dict())
+
+        loaded = load_results(results_path)
+        assert len(loaded) == len(accs)
+        write_leaderboard(loaded, leaderboard_path)
+        content = leaderboard_path.read_text()
+        assert "Auto-Research Leaderboard" in content
+
+        top = top_k(loaded, k=3)
+        assert len(top) == 3
+        assert top[0]["accuracy"] >= top[1]["accuracy"] >= top[2]["accuracy"]
+        assert top[0]["accuracy"] == max(accs)
+
+        assert has_plateaued(loaded, window=4, min_delta=0.002)
+
+        for i, acc in enumerate([0.70, 0.75, 0.80, 0.85, 0.90]):
+            r = ExperimentResult(
+                exp_id=f"climb_{i}",
+                config=ExperimentConfig(exp_id=f"climb_{i}", hypothesis="t").to_dict(),
+                accuracy=acc, n_eval=100, train_loss=0.1,
+                runtime_sec=1.0, status="success", extra={"f1": acc},
+            )
+            results_path2 = td / "climb.jsonl"
+            append_result(results_path2, r.to_dict())
+        climbing = load_results(td / "climb.jsonl")
+        assert not has_plateaued(climbing, window=4, min_delta=0.002)
+
+        print("[ok] analyzer (leaderboard, plateau detection both directions, top-k)")
+
+
+def test_loss_dispatcher():
+    try:
+        import torch  # noqa: F401
+    except ImportError:
+        print("[skip] loss dispatcher (torch not installed in this env)")
+        return
+    from auto_research.losses import make_loss_fn
+    for name in ("ce", "label_smoothing", "focal", "weighted_ce"):
+        spec = LossConfigSpec(name=name)
+        fn = make_loss_fn(spec, pos_token_id=42)
+        assert callable(fn)
+    print("[ok] loss dispatcher")
+
+
+# --- examples/product_comparison tests ---------------------------------------
 
 def make_synthetic_df(n: int = 200, seed: int = 0) -> pd.DataFrame:
     """Produce a tiny synthetic pairs dataframe."""
@@ -99,31 +197,18 @@ def make_synthetic_df(n: int = 200, seed: int = 0) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def test_data_strategies():
-    df = make_synthetic_df(500)
-    spec = DataConfigSpec(train_subset=100, balance="downsample", hard_neg_frac=0.2)
-    out = apply_data_strategy(df, spec, seed=42, is_train=True)
-    assert len(out) == 100
-    pos = (out["Label"] == 1).sum()
-    neg = (out["Label"] == 0).sum()
-    # Downsampling should leave roughly equal class counts post-subset (approximate
-    # since subsetting happens after balance).
-    print(f"[ok] data strategies applied (n={len(out)}, pos={pos}, neg={neg})")
-
-    # Eval path should NOT balance/mine — only subset
-    eval_out = apply_data_strategy(df, DataConfigSpec(eval_subset=50), seed=42, is_train=False)
-    assert len(eval_out) == 50
-    print(f"[ok] eval path subsetting (n={len(eval_out)})")
-
-
-def test_dataset():
-    df = make_synthetic_df(20)
-    ds = ProductPairDataset(df, augment=False)
-    assert len(ds) == 20
-    item = ds[0]
-    assert "messages" in item and "label" in item
-    assert "input_ids" in ds.column_names  # critical for SFTTrainer routing
-    print("[ok] ProductPairDataset")
+def test_prompts():
+    msgs = build_messages("Apple iPhone 15 128GB", "iPhone 15 128GB", answer="Yes")
+    assert len(msgs) == 3
+    assert msgs[0]["role"] == "system"
+    assert msgs[1]["role"] == "user"
+    assert msgs[2]["role"] == "assistant"
+    assert msgs[2]["content"] == "Yes"
+    assert label_to_answer(1) == "Yes"
+    assert label_to_answer(0) == "No"
+    msgs2 = build_messages("a", "b")
+    assert len(msgs2) == 2
+    print("[ok] prompt construction")
 
 
 def test_jaccard():
@@ -131,131 +216,62 @@ def test_jaccard():
     assert j == 1.0
     j2 = _jaccard("Apple iPhone 15", "Samsung Galaxy S24")
     assert j2 == 0.0
-    print(f"[ok] jaccard (identical={1.0}, disjoint={j2})")
+    print("[ok] jaccard (identical=1.0, disjoint=0.0)")
 
 
-def test_seed_plan():
-    plan = seed_plan()
-    assert len(plan) == 6
-    ids = [p.exp_id for p in plan]
-    assert len(set(ids)) == 6  # all unique
-    # Coverage: at least one with focal, one with hard_neg, one with balanced
-    losses_used = {p.loss.name for p in plan}
-    assert "focal" in losses_used
-    assert "label_smoothing" in losses_used
-    assert any(p.data.hard_neg_frac > 0 for p in plan)
-    assert any(p.data.balance != "none" for p in plan)
-    print(f"[ok] seed plan ({len(plan)} experiments, losses={sorted(losses_used)})")
+def test_example_data_interface(tmp_train_path: Path, tmp_eval_path: Path):
+    # load_train_dataset honors balance + subset, returns a Dataset
+    ds = load_train_dataset(
+        seed=42, subset=100, balance="downsample",
+        train_path=str(tmp_train_path),
+    )
+    assert isinstance(ds, ProductPairDataset)
+    assert len(ds) == 100
+    item = ds[0]
+    assert "messages" in item and "label" in item
+    assert "input_ids" in ds.column_names
+
+    # load_eval_dataset returns a DataFrame, subsetted
+    ev = load_eval_dataset(seed=42, subset=50, eval_path=str(tmp_eval_path))
+    assert isinstance(ev, pd.DataFrame)
+    assert len(ev) == 50
+    print(f"[ok] example data interface (train Dataset n=100, eval df n=50)")
 
 
-def test_heuristic_fallback():
-    # Empty history -> returns the first seed plan entry
-    cfg = _heuristic_fallback([], next_idx=0)
-    assert cfg.exp_id == "seed_01_baseline"
-
-    # With history, should perturb the best
-    fake_results = [{
-        "exp_id": "seed_01_baseline",
-        "config": ExperimentConfig(
-            exp_id="seed_01_baseline", hypothesis="x",
-            lora=LoraConfigSpec(r=8, alpha=16),
-            loss=LossConfigSpec(name="ce"),
-        ).to_dict(),
-        "accuracy": 0.85,
-        "status": "success",
-    }]
-    cfg2 = _heuristic_fallback(fake_results, next_idx=1)
-    assert cfg2.exp_id == "heuristic_001"
-    assert cfg2.lora.r == 16  # 8 doubled
-    assert cfg2.loss.name == "focal"  # CE -> focal flip
-    print("[ok] heuristic fallback")
+def test_example_evaluator_contract():
+    from examples.product_comparison import evaluator
+    assert hasattr(evaluator, "evaluate")
+    assert getattr(evaluator, "PRIMARY_METRIC", None) == "accuracy"
+    import inspect
+    sig = inspect.signature(evaluator.evaluate)
+    params = list(sig.parameters)
+    # First three positional should be (adapter_dir, model_name, eval_data)
+    assert params[:3] == ["adapter_dir", "model_name", "eval_data"], params
+    print("[ok] example evaluator contract")
 
 
-def test_analyzer():
-    with tempfile.TemporaryDirectory() as td:
-        td = Path(td)
-        results_path = td / "results.jsonl"
-        leaderboard_path = td / "leaderboard.md"
-
-        # Accuracies designed so that ok[:-4] = [0.80, 0.86, 0.87] (earlier_best=0.87)
-        # and the last 4 are [0.870, 0.871, 0.870, 0.871] (recent_best=0.871).
-        # delta = 0.001 < 0.002 -> plateaued = True.
-        accs = [0.80, 0.86, 0.87, 0.870, 0.871, 0.870, 0.871]
-        for i, acc in enumerate(accs):
-            r = ExperimentResult(
-                exp_id=f"exp_{i}",
-                config=ExperimentConfig(
-                    exp_id=f"exp_{i}", hypothesis="t",
-                    lora=LoraConfigSpec(r=8 * (1 + i % 2)),
-                ).to_dict(),
-                accuracy=acc, n_eval=2000, train_loss=0.1,
-                runtime_sec=600.0, status="success",
-                extra={"f1": acc - 0.01},
-            )
-            append_result(results_path, r.to_dict())
-
-        loaded = load_results(results_path)
-        assert len(loaded) == len(accs)
-        write_leaderboard(loaded, leaderboard_path)
-        content = leaderboard_path.read_text()
-        assert "Auto-Research Leaderboard" in content
-
-        # The top entry should be one of the high-accuracy runs
-        top = top_k(loaded, k=3)
-        assert len(top) == 3
-        assert top[0]["accuracy"] >= top[1]["accuracy"] >= top[2]["accuracy"]
-        assert top[0]["accuracy"] == max(accs)
-
-        # Plateau check: last 4 hover around 0.871, earlier best was 0.87.
-        assert has_plateaued(loaded, window=4, min_delta=0.002), (
-            f"expected plateau given accs={accs}"
-        )
-
-        # Negative case: a clearly improving sequence should NOT plateau
-        for i, acc in enumerate([0.70, 0.75, 0.80, 0.85, 0.90]):
-            r = ExperimentResult(
-                exp_id=f"climb_{i}",
-                config=ExperimentConfig(exp_id=f"climb_{i}", hypothesis="t").to_dict(),
-                accuracy=acc, n_eval=100, train_loss=0.1,
-                runtime_sec=1.0, status="success", extra={"f1": acc},
-            )
-            results_path2 = td / "climb.jsonl"
-            append_result(results_path2, r.to_dict())
-        climbing = load_results(td / "climb.jsonl")
-        assert not has_plateaued(climbing, window=4, min_delta=0.002), (
-            "improving sequence should not be flagged as plateau"
-        )
-
-        print("[ok] analyzer (leaderboard, plateau detection both directions, top-k)")
-
-
-def test_loss_dispatcher_no_torch():
-    """Verifies loss dispatcher returns a callable for each name. Requires torch."""
-    try:
-        import torch  # noqa: F401
-    except ImportError:
-        print("[skip] loss dispatcher (torch not installed in this env)")
-        return
-    from auto_research.losses import make_loss_fn
-    for name in ("ce", "label_smoothing", "focal", "weighted_ce"):
-        spec = LossConfigSpec(name=name)
-        fn = make_loss_fn(spec, pos_token_id=42)
-        assert callable(fn)
-    print("[ok] loss dispatcher")
-
+# --- runner ------------------------------------------------------------------
 
 if __name__ == "__main__":
+    # Write a tiny synthetic CSV pair for the data-interface test
+    tmp = Path(tempfile.mkdtemp(prefix="automle_smoke_"))
+    train_path = tmp / "train.csv"
+    eval_path = tmp / "eval.csv"
+    make_synthetic_df(500, seed=0).to_csv(train_path, index=False)
+    make_synthetic_df(200, seed=1).to_csv(eval_path, index=False)
+
     tests = [
         test_schema_roundtrip,
+        test_dataconfig_is_task_agnostic,
         test_apply_tier,
-        test_prompts,
-        test_data_strategies,
-        test_dataset,
-        test_jaccard,
         test_seed_plan,
         test_heuristic_fallback,
         test_analyzer,
-        test_loss_dispatcher_no_torch,
+        test_loss_dispatcher,
+        test_prompts,
+        test_jaccard,
+        lambda: test_example_data_interface(train_path, eval_path),
+        test_example_evaluator_contract,
     ]
     failed = 0
     for t in tests:
@@ -263,7 +279,8 @@ if __name__ == "__main__":
             t()
         except Exception as e:
             failed += 1
-            print(f"[FAIL] {t.__name__}: {type(e).__name__}: {e}")
+            name = getattr(t, "__name__", "<lambda>")
+            print(f"[FAIL] {name}: {type(e).__name__}: {e}")
             import traceback
             traceback.print_exc()
     print()

@@ -2,71 +2,58 @@
 Fetch competition metadata from the Kaggle REST API.
 
 Endpoints used:
-  GET /api/v1/competitions/{slug}           — title, description, evaluation metric
-  GET /api/v1/competitions/data/list/{slug} — data file manifest
+  GET /api/v1/competitions/list?search=<slug>  — search for competition metadata
+  GET /api/v1/competitions/data/list/<slug>    — data file manifest
 
-All calls use HTTP Basic Auth (username + API key from kaggle.json).
-No kaggle Python package required.
+Auth: Bearer token (Authorization: Bearer <key>).
+The older Basic-Auth format returns 401 on current Kaggle API endpoints.
 """
 from __future__ import annotations
-from html.parser import HTMLParser
 
 import requests
 
-from .auth import http_auth
+from .auth import bearer_headers
 
 _BASE = "https://www.kaggle.com/api/v1"
 _TIMEOUT = 30
 
 
-class _TagStripper(HTMLParser):
-    """Minimal HTML → plain-text converter (no external dependencies)."""
-
-    def __init__(self):
-        super().__init__()
-        self._buf: list[str] = []
-        self._skip = 0
-
-    def handle_starttag(self, tag, attrs):
-        if tag in ("script", "style"):
-            self._skip += 1
-        elif tag in ("p", "br", "h1", "h2", "h3", "h4", "li"):
-            self._buf.append("\n")
-
-    def handle_endtag(self, tag):
-        if tag in ("script", "style"):
-            self._skip = max(0, self._skip - 1)
-
-    def handle_data(self, data):
-        if not self._skip:
-            stripped = data.strip()
-            if stripped:
-                self._buf.append(stripped)
-
-    def text(self) -> str:
-        import re
-        raw = " ".join(self._buf)
-        return re.sub(r"\n +", "\n", re.sub(r" {2,}", " ", raw)).strip()
+def _slug_from_ref(ref: str) -> str:
+    """Extract slug from a full Kaggle competition URL."""
+    return ref.rstrip("/").split("/")[-1]
 
 
-def _strip_html(html: str) -> str:
-    p = _TagStripper()
-    p.feed(html)
-    return p.text()
-
-
-def _get(path: str, auth: tuple) -> dict | list:
-    r = requests.get(f"{_BASE}{path}", auth=auth, timeout=_TIMEOUT)
-    if r.status_code == 403:
-        raise PermissionError(
-            f"Kaggle returned 403 for {path}.\n"
-            "You may need to accept the competition rules at:\n"
-            f"  https://www.kaggle.com/c/{path.split('/')[-1]}"
-        )
-    if r.status_code == 404:
-        raise ValueError(f"Not found (404): {path!r} — check the competition slug.")
+def _find_competition(slug: str) -> dict:
+    """
+    Search the competitions list for a matching entry.
+    Kaggle's /api/v1/competitions/<slug> endpoint returns 404 for many competitions;
+    the list-search endpoint is the reliable alternative.
+    """
+    headers = bearer_headers()
+    r = requests.get(
+        f"{_BASE}/competitions/list",
+        headers=headers,
+        params={"search": slug, "page": 1, "pageSize": 10},
+        timeout=_TIMEOUT,
+    )
     r.raise_for_status()
-    return r.json()
+    results = r.json() if isinstance(r.json(), list) else []
+
+    for comp in results:
+        ref = comp.get("ref", "")
+        if _slug_from_ref(ref) == slug:
+            return comp
+
+    # Looser match: slug appears anywhere in the ref URL
+    for comp in results:
+        if slug in comp.get("ref", ""):
+            return comp
+
+    raise ValueError(
+        f"Competition '{slug}' not found via Kaggle API search.\n"
+        f"Check the slug at: https://www.kaggle.com/competitions\n"
+        f"(API returned {len(results)} result(s) for that search term)"
+    )
 
 
 def get_competition_info(slug: str) -> dict:
@@ -75,33 +62,52 @@ def get_competition_info(slug: str) -> dict:
 
     Returned dict fields:
         slug, title, description, evaluation_metric,
-        competition_url, files: [{name, size_bytes, description}]
+        competition_url, files, user_has_entered
     """
-    auth = http_auth()
+    headers = bearer_headers()
+    comp = _find_competition(slug)
 
-    meta = _get(f"/competitions/{slug}", auth)
-    raw_files = _get(f"/competitions/data/list/{slug}", auth)
-    if not isinstance(raw_files, list):
-        raw_files = []
+    # Data file manifest
+    fr = requests.get(
+        f"{_BASE}/competitions/data/list/{slug}",
+        headers=headers,
+        timeout=_TIMEOUT,
+    )
+    files: list[dict] = []
+    if fr.status_code == 200:
+        raw = fr.json()
+        files = [
+            {
+                "name": f.get("name", ""),
+                "size_bytes": f.get("totalBytes", 0),
+                "description": f.get("description", ""),
+            }
+            for f in (raw if isinstance(raw, list) else [])
+            if f.get("name")
+        ]
+    elif fr.status_code == 403:
+        # Rules not yet accepted — files are inaccessible but we can still proceed
+        files = []
 
-    description_html = meta.get("description", "") or ""
-    description = _strip_html(description_html)
+    # Build description from available fields
+    description = comp.get("description", "") or ""
+    tags = [t.get("name", "") for t in comp.get("tags", [])]
+    if tags:
+        description += f"\nTags: {', '.join(tags)}"
 
-    files = [
-        {
-            "name": f.get("name", ""),
-            "size_bytes": f.get("totalBytes", 0),
-            "description": (_strip_html(f.get("description", "") or "")),
-        }
-        for f in raw_files
-        if f.get("name")
-    ]
+    # Metric description from rmsle/other tags if available
+    for t in comp.get("tags", []):
+        if t.get("description"):
+            description += f"\nMetric note: {t['description']}"
+
+    user_has_entered = comp.get("userHasEntered", False)
 
     return {
         "slug": slug,
-        "title": meta.get("title", slug),
+        "title": comp.get("title", slug),
         "description": description,
-        "evaluation_metric": meta.get("evaluationMetric", "unknown"),
+        "evaluation_metric": comp.get("evaluationMetric", "unknown"),
         "competition_url": f"https://www.kaggle.com/c/{slug}",
         "files": files,
+        "user_has_entered": user_has_entered,
     }

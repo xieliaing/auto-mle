@@ -201,15 +201,39 @@ def get_collator(tokenizer, max_seq_len)
 ```
 
 ### FILE 3: evaluator.py
-AutoMLE evaluator module using PEFT/transformers.
+AutoMLE evaluator module.
 Implement:
 ```
 PRIMARY_METRIC = "<name matching the competition metric>"
 
 def evaluate(adapter_dir, model_name, eval_data, **kwargs) -> dict:
-    # Load the fine-tuned LLM, run inference on eval_data rows,
-    # parse text output into predictions, compute the metric.
-    # Return {{"<PRIMARY_METRIC>": float, "n_eval": int}}
+    # kwargs may contain:
+    #   predictions_path  — optional str path; save predictions CSV there if provided
+    #   train_data        — training data (for traditional ML: train here, then eval)
+    #   config            — current ExperimentConfig dict (extract model params from it)
+    #   output_dir        — run directory (str)
+    #
+    # For traditional ML: ignore adapter_dir/model_name; use train_data + config.
+    # For LLM fine-tuning: load the fine-tuned model from adapter_dir.
+    #
+    # REQUIRED: build a predictions DataFrame and return it as "predictions_df":
+    #   import pandas as pd
+    #   predictions_df = pd.DataFrame({{
+    #       "sample_id":  list(range(len(eval_data))),  # or eval_data.index
+    #       "true_label": true_labels,                  # ground-truth class labels
+    #       "pred_label": predicted_labels,             # predicted class labels
+    #       "confidence": positive_class_proba,         # P(class=1), float 0-1
+    #                                                   # use model.predict_proba()[:,1]
+    #                                                   # or decision_function() if no proba
+    #   }})
+    #   # "confidence" enables score-band stratified sampling in defect analysis.
+    #
+    # Return:
+    #   {{
+    #     "<PRIMARY_METRIC>": float,
+    #     "n_eval": int,
+    #     "predictions_df": predictions_df,   # required for defect analysis
+    #   }}
 ```
 
 ---
