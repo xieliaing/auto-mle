@@ -58,7 +58,7 @@ class DefectReport:
         pct = lambda n: f"{100 * n / max(self.n_sampled, 1):.1f}%"
         strategy = self.sampling.get("strategy", "?")
         lines = [
-            f"Defect analysis: {self.prev_exp_id} → {self.exp_id}",
+            f"Defect analysis: {self.prev_exp_id} -> {self.exp_id}",
             f"  Population / sample : {self.n_total} / {self.n_sampled}"
             + (f"  (strategy={strategy})" if strategy != "none" else ""),
         ]
@@ -69,10 +69,10 @@ class DefectReport:
             parts = [f"{b}: {bc.get(b, 0)} rows (budget {bb.get(b, 0)})" for b in ("near", "mid", "far")]
             lines.append("  Score bands         : " + " | ".join(parts))
         lines += [
-            f"  Fixed (wrong→right) : {self.n_fixed} ({pct(self.n_fixed)})",
+            f"  Fixed (wrong->right): {self.n_fixed} ({pct(self.n_fixed)})",
             f"  New errors          : {self.n_new_errors} ({pct(self.n_new_errors)})",
             f"  Persistent errors   : {self.n_persistent} ({pct(self.n_persistent)})",
-            f"  Net Δ               : {'+' if self.net_change >= 0 else ''}{self.net_change}",
+            f"  Net change          : {'+' if self.net_change >= 0 else ''}{self.net_change}",
         ]
         if self.class_patterns.get("top_fixed"):
             lines.append("  Fixed confusion transitions (top 3):")
@@ -237,7 +237,7 @@ def analyze_defects(
         bc = meta.band_counts
         bb = meta.band_budgets
         print(
-            f"  [defect] bands — "
+            f"  [defect] bands - "
             f"near: {bc.get('near',0)} rows / {bb.get('near',0)} budget  "
             f"mid: {bc.get('mid',0)} / {bb.get('mid',0)}  "
             f"far: {bc.get('far',0)} / {bb.get('far',0)}"

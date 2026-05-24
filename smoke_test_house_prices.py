@@ -51,7 +51,7 @@ def test_data_loading():
     assert len(set(train.index) & set(val.index)) == 0 or True  # indices reset, check size
     assert len(val) > 0
 
-    print(f"[ok] data loading — train={len(train)} val={len(val)} features={train.shape[1]}")
+    print(f"[ok] data loading - train={len(train)} val={len(val)} features={train.shape[1]}")
     return train, val
 
 
@@ -94,7 +94,7 @@ def test_model_training(tmp_dir: Path):
     loaded = pd.read_csv(csv_path)
     assert len(loaded) == len(preds)
 
-    print(f"[ok] model training — RMSLE={rmsle:.4f} n_eval={out['n_eval']} "
+    print(f"[ok] model training - RMSLE={rmsle:.4f} n_eval={out['n_eval']} "
           f"predictions_df shape={preds.shape}")
     return out, rmsle
 
@@ -121,7 +121,7 @@ def test_second_iteration(tmp_dir: Path):
     )
 
     rmsle2 = out[PRIMARY_METRIC]
-    print(f"[ok] second iteration — RMSLE={rmsle2:.4f}")
+    print(f"[ok] second iteration - RMSLE={rmsle2:.4f}")
     return out, rmsle2
 
 
@@ -152,7 +152,7 @@ def test_sampler(tmp_dir: Path):
     assert sum(meta.band_counts.values()) == meta.n_total
 
     print(
-        f"[ok] sampler — population={meta.n_total} sampled={meta.n_sampled} "
+        f"[ok] sampler - population={meta.n_total} sampled={meta.n_sampled} "
         f"strategy={meta.strategy} "
         f"bands: near={meta.band_counts.get('near',0)} "
         f"mid={meta.band_counts.get('mid',0)} "
@@ -186,7 +186,7 @@ def test_defect_analysis(tmp_dir: Path):
     assert report.class_patterns  # should have top_fixed and top_new_errors keys
 
     print(report.format_summary())
-    print(f"[ok] defect analysis — "
+    print(f"[ok] defect analysis - "
           f"fixed={report.n_fixed} new_errors={report.n_new_errors} "
           f"persistent={report.n_persistent} net={report.net_change:+d}")
     return report
@@ -226,7 +226,7 @@ def test_journal(tmp_dir: Path, report, rmsle1: float, rmsle2: float):
     assert "iter2" in summary
     assert "rmsle" in summary.lower()
 
-    print(f"[ok] learning journal — {len(history)} entries, format_for_proposer works")
+    print(f"[ok] learning journal - {len(history)} entries, format_for_proposer works")
     return j
 
 
@@ -238,7 +238,7 @@ def test_skill_proposer(report, journal):
     from kaggle.skill_proposer import propose_skills
 
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("[skip] skill proposer — ANTHROPIC_API_KEY not set")
+        print("[skip] skill proposer - ANTHROPIC_API_KEY not set")
         return []
 
     skills = propose_skills(
@@ -257,7 +257,7 @@ def test_skill_proposer(report, journal):
         for s in skills:
             assert "name" in s
             assert "rationale" in s
-        print(f"[ok] skill proposer — {len(skills)} skills: {[s['name'] for s in skills]}")
+        print(f"[ok] skill proposer - {len(skills)} skills: {[s['name'] for s in skills]}")
     else:
         print("[warn] skill proposer returned 0 skills (API call may have failed)")
     return skills
