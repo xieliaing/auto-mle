@@ -108,6 +108,7 @@ You will respond with ONLY a single JSON object matching the ExperimentConfig sc
 
 PROPOSER_USER_TEMPLATE = """## Task
 LoRA fine-tuning of base model: {model_name} (4-bit QLoRA). The task's data loader and evaluator are supplied by the user; treat them as a black box and tune the LoRA/training/loss axes below.
+{memory_context_section}
 
 ## Schema (return JSON matching this shape)
 {{
@@ -211,6 +212,7 @@ def propose_next(
     model_name: str,
     next_idx: int,
     use_llm: bool = True,
+    memory_context: str = "",
 ) -> ExperimentConfig:
     """
     Propose the next experiment config.
@@ -218,6 +220,8 @@ def propose_next(
     `results` is a list of dicts loaded from results.jsonl. `next_idx` is just
     used for fallback exp_id naming. `model_name` is the base LLM being fine-
     tuned (provided so the proposer's hypothesis can reference it).
+    `memory_context` is an optional string from ExperimentMemory summarizing
+    per-sample defect patterns observed across prior iterations.
     """
     # Phase 1: seed plan
     plan = seed_plan()
@@ -227,14 +231,16 @@ def propose_next(
     # Phase 2: LLM-driven
     if use_llm:
         try:
-            return _propose_via_llm(results, model_name)
+            return _propose_via_llm(results, model_name, memory_context)
         except Exception as e:
             print(f"[proposer] LLM proposal failed: {type(e).__name__}: {e}")
             print("[proposer] falling back to heuristic")
     return _heuristic_fallback(results, next_idx)
 
 
-def _propose_via_llm(results: List[dict], model_name: str) -> ExperimentConfig:
+def _propose_via_llm(
+    results: List[dict], model_name: str, memory_context: str = ""
+) -> ExperimentConfig:
     """Call Claude to propose the next config. Raises on any failure."""
     try:
         import anthropic
@@ -247,8 +253,10 @@ def _propose_via_llm(results: List[dict], model_name: str) -> ExperimentConfig:
 
     client = anthropic.Anthropic(api_key=api_key)
 
+    memory_section = f"\n{memory_context}\n" if memory_context else ""
     user_msg = PROPOSER_USER_TEMPLATE.format(
         model_name=model_name,
+        memory_context_section=memory_section,
         history=_format_history(results),
         best=_format_best(results),
     )

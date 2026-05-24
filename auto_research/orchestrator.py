@@ -25,6 +25,8 @@ data.py, evaluator.py, and trainer.py from a task folder. Their contracts:
 from __future__ import annotations
 import gc
 import importlib.util
+import json
+import os
 import time
 import traceback
 from pathlib import Path
@@ -39,6 +41,8 @@ from .analyzer import (
     load_results, append_result, write_leaderboard,
     best_so_far, has_plateaued, top_k,
 )
+from .profiler import profile_iterations
+from .memory import ExperimentMemory
 
 
 # --- Dynamic task-module loading --------------------------------------------
@@ -139,6 +143,21 @@ def run_one_experiment(
         )
         _free_gpu()
 
+        # Per-sample predictions for profiling (optional evaluator contract)
+        if hasattr(evaluator_mod, "get_predictions"):
+            try:
+                preds = evaluator_mod.get_predictions(
+                    train_out["adapter_dir"], model_name, eval_data,
+                    max_seq_len=cfg.train.max_seq_len,
+                )
+                preds_path = run_dir / "predictions.jsonl"
+                preds_path.write_text(
+                    "\n".join(json.dumps(p) for p in preds)
+                )
+                _free_gpu()
+            except Exception as e:
+                print(f"[profiling] get_predictions failed: {e}")
+
         primary = float(eval_out.get(primary_metric, 0.0))
         n_eval = int(eval_out.get("n_eval", 0))
         extra = {k: v for k, v in eval_out.items() if k not in (primary_metric, "n_eval")}
@@ -205,6 +224,27 @@ def orchestrate(
     print(f"[orchestrate] Resuming with {len(all_results)} prior results. "
           f"Budget: {budget}. Primary metric: {primary_metric}.")
 
+    # Memory + profiling setup
+    memory = ExperimentMemory(results_dir / "memory.json")
+    task_description = getattr(
+        evaluator_mod,
+        "TASK_DESCRIPTION",
+        Path(data_path).parent.name.replace("_", " "),
+    )
+    anthropic_client = None
+    if use_llm_proposer:
+        try:
+            import anthropic as _anthropic
+            _key = os.environ.get("ANTHROPIC_API_KEY")
+            if _key:
+                anthropic_client = _anthropic.Anthropic(api_key=_key)
+        except ImportError:
+            pass
+
+    # Track previous successful experiment's predictions for inter-run profiling
+    prev_preds: Optional[list] = None
+    prev_exp_id: Optional[str] = None
+
     # --- Phase A: exploration ---------------------------------------------
     while next_idx < budget:
         cfg = propose_next(
@@ -212,6 +252,7 @@ def orchestrate(
             model_name=model_name,
             next_idx=next_idx,
             use_llm=use_llm_proposer,
+            memory_context=memory.get_context_for_proposal(),
         )
         if cfg.exp_id in completed_ids:
             cfg.exp_id = f"{cfg.exp_id}_v{next_idx}"
@@ -232,6 +273,34 @@ def orchestrate(
         if result.status == "success":
             print(f"  -> {primary_metric} = {result.accuracy:.4f} (n={result.n_eval}, "
                   f"loss={result.train_loss:.4f}, {result.runtime_sec:.0f}s)")
+
+            # Per-sample profiling: compare against previous successful run
+            preds_path = runs_dir / cfg.exp_id / "predictions.jsonl"
+            if preds_path.exists():
+                curr_preds = [
+                    json.loads(line)
+                    for line in preds_path.read_text().splitlines()
+                    if line.strip()
+                ]
+                if prev_preds is not None:
+                    profile = profile_iterations(
+                        prev_preds, curr_preds,
+                        prev_exp_id, cfg.exp_id,
+                        task_description, anthropic_client,
+                    )
+                    profile_path = runs_dir / cfg.exp_id / "profile.json"
+                    profile_path.write_text(json.dumps(profile, indent=2))
+                    memory.update(profile, cfg.exp_id, cfg.hypothesis)
+                    memory.save()
+                    stats = profile["stats"]
+                    print(
+                        f"  -> profile: fixed={stats['fixed']}, "
+                        f"regressed={stats['regressed']}, "
+                        f"persistent={stats['persistent_errors']} "
+                        f"(of {stats['total_compared']} compared)"
+                    )
+                prev_preds = curr_preds
+                prev_exp_id = cfg.exp_id
         else:
             print(f"  -> FAILED: {result.status}: {result.error[:200]}")
 

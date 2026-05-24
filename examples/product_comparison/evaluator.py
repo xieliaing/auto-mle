@@ -139,3 +139,51 @@ def evaluate(
         "precision": prec, "recall": rec, "f1": f1,
         "yes_token_id": int(yes_id), "no_token_id": int(no_id),
     }
+
+
+@torch.no_grad()
+def get_predictions(
+    adapter_dir: Optional[str],
+    model_name: str,
+    eval_data: pd.DataFrame,
+    batch_size: int = 8,
+    max_seq_len: int = 512,
+    **kwargs,
+) -> list:
+    """
+    Return per-sample prediction dicts for sample-level profiling.
+
+    Each dict: {sample_id, input_summary, label, prediction, correct, confidence}.
+    confidence = |yes_logit - no_logit| (higher = more certain).
+    """
+    model, tokenizer = _load_for_eval(model_name, adapter_dir)
+    yes_id, no_id = get_yes_no_token_ids(tokenizer)
+
+    rows = eval_data.to_dict(orient="records")
+    results = []
+    for start in range(0, len(rows), batch_size):
+        chunk = rows[start : start + batch_size]
+        enc = _build_prompt_only_batch(chunk, tokenizer, max_seq_len)
+        enc = {k: v.to(model.device) for k, v in enc.items()}
+        out = model(**enc, use_cache=False)
+        last = out.logits[:, -1, :]
+        yes_l = last[:, yes_id].cpu().float()
+        no_l = last[:, no_id].cpu().float()
+        preds = (yes_l > no_l).long().tolist()
+        confs = (yes_l - no_l).abs().tolist()
+        for i, (r, pred, conf) in enumerate(zip(chunk, preds, confs)):
+            label = int(r["Label"])
+            results.append(
+                {
+                    "sample_id": str(start + i),
+                    "input_summary": f"{str(r['title1'])[:60]} | {str(r['title2'])[:60]}",
+                    "label": label,
+                    "prediction": pred,
+                    "correct": pred == label,
+                    "confidence": round(float(conf), 4),
+                }
+            )
+
+    del model
+    torch.cuda.empty_cache()
+    return results
