@@ -23,11 +23,29 @@ def _slug_from_ref(ref: str) -> str:
     return ref.rstrip("/").split("/")[-1]
 
 
+def _competition_exists(slug: str) -> bool:
+    """
+    Confirm a competition exists, independent of search indexing.
+    The data-manifest endpoint returns 200 when accessible and 403 when the
+    competition exists but rules are not yet accepted — both confirm existence.
+    Old/completed competitions (e.g. dog-breed-identification) are absent from
+    the search index but are reachable here.
+    """
+    headers = bearer_headers()
+    r = requests.get(
+        f"{_BASE}/competitions/data/list/{slug}",
+        headers=headers,
+        timeout=_TIMEOUT,
+    )
+    return r.status_code in (200, 403)
+
+
 def _find_competition(slug: str) -> dict:
     """
     Search the competitions list for a matching entry.
     Kaggle's /api/v1/competitions/<slug> endpoint returns 404 for many competitions;
-    the list-search endpoint is the reliable alternative.
+    the list-search endpoint is the reliable alternative. Competitions missing from
+    the search index fall back to a minimal record built from the slug.
     """
     headers = bearer_headers()
     r = requests.get(
@@ -48,6 +66,14 @@ def _find_competition(slug: str) -> dict:
     for comp in results:
         if slug in comp.get("ref", ""):
             return comp
+
+    # Search missed it — confirm existence via the data endpoint and synthesize
+    # a minimal record (title derived from the slug; richer metadata unavailable).
+    if _competition_exists(slug):
+        return {
+            "ref": f"competitions/{slug}",
+            "title": slug.replace("-", " ").title(),
+        }
 
     raise ValueError(
         f"Competition '{slug}' not found via Kaggle API search.\n"
@@ -76,13 +102,15 @@ def get_competition_info(slug: str) -> dict:
     files: list[dict] = []
     if fr.status_code == 200:
         raw = fr.json()
+        # Old API: a bare list. New API: {"files": [...], "nextPageToken": ...}.
+        items = raw.get("files", []) if isinstance(raw, dict) else (raw if isinstance(raw, list) else [])
         files = [
             {
                 "name": f.get("name", ""),
                 "size_bytes": f.get("totalBytes", 0),
                 "description": f.get("description", ""),
             }
-            for f in (raw if isinstance(raw, list) else [])
+            for f in items
             if f.get("name")
         ]
     elif fr.status_code == 403:

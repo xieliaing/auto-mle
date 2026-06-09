@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 .env
 results/
+# Downloaded Kaggle competition data — large, regenerable via kaggle.setup
+kaggle/tasks/*/data/

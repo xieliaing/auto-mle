@@ -1,0 +1,110 @@
+{
+  "slug": "dog-breed-identification",
+  "title": "Dog Breed Identification",
+  "description": "",
+  "evaluation_metric": "unknown",
+  "competition_url": "https://www.kaggle.com/c/dog-breed-identification",
+  "files": [
+    {
+      "name": "labels.csv",
+      "size_bytes": 482063,
+      "description": ""
+    },
+    {
+      "name": "sample_submission.csv",
+      "size_bytes": 25200295,
+      "description": ""
+    },
+    {
+      "name": "test/000621fb3cbb32d8935728e48679680e.jpg",
+      "size_bytes": 62378,
+      "description": ""
+    },
+    {
+      "name": "test/00102ee9d8eb90812350685311fe5890.jpg",
+      "size_bytes": 29124,
+      "description": ""
+    },
+    {
+      "name": "test/0012a730dfa437f5f3613fb75efcd4ce.jpg",
+      "size_bytes": 53724,
+      "description": ""
+    },
+    {
+      "name": "test/001510bc8570bbeee98c8d80c8a95ec1.jpg",
+      "size_bytes": 44778,
+      "description": ""
+    },
+    {
+      "name": "test/001a5f3114548acdefa3d4da05474c2e.jpg",
+      "size_bytes": 15655,
+      "description": ""
+    },
+    {
+      "name": "test/00225dcd3e4d2410dd53239f95c0352f.jpg",
+      "size_bytes": 6873,
+      "description": ""
+    },
+    {
+      "name": "test/002c2a3117c2193b4d26400ce431eebd.jpg",
+      "size_bytes": 33066,
+      "description": ""
+    },
+    {
+      "name": "test/002c58d413a521ae8d1a5daeb35fc803.jpg",
+      "size_bytes": 11695,
+      "description": ""
+    },
+    {
+      "name": "test/002f80396f1e3db687c5932d7978b196.jpg",
+      "size_bytes": 68106,
+      "description": ""
+    },
+    {
+      "name": "test/0036c6bcec6031be9e62a257b1c3c442.jpg",
+      "size_bytes": 69709,
+      "description": ""
+    },
+    {
+      "name": "test/0041940322116ae58c38130f5a6f71f9.jpg",
+      "size_bytes": 36741,
+      "description": ""
+    },
+    {
+      "name": "test/0042d6bf3e5f3700865886db32689436.jpg",
+      "size_bytes": 4373,
+      "description": ""
+    },
+    {
+      "name": "test/004476c96f575879af4af471af65cae8.jpg",
+      "size_bytes": 25598,
+      "description": ""
+    },
+    {
+      "name": "test/00485d47de966a9437ad3b33ac193b6f.jpg",
+      "size_bytes": 55026,
+      "description": ""
+    },
+    {
+      "name": "test/00496f65de6cc319145ce97bd6e90360.jpg",
+      "size_bytes": 25229,
+      "description": ""
+    },
+    {
+      "name": "test/004bf14426d1a830d459a9e0c0721309.jpg",
+      "size_bytes": 34942,
+      "description": ""
+    },
+    {
+      "name": "test/004c3721eb88358f462cdcec6b2380b7.jpg",
+      "size_bytes": 49684,
+      "description": ""
+    },
+    {
+      "name": "test/00559f56aab7e0a7749220f6aed65162.jpg",
+      "size_bytes": 20634,
+      "description": ""
+    }
+  ],
+  "user_has_entered": false
+}

@@ -93,22 +93,22 @@ The `kaggle/` package sets up a Kaggle competition as an AutoMLE task in one com
 
 ```bash
 # Downloads data, inspects schema, generates a competition-aware baseline (uses Anthropic Claude by default)
-python -m kaggle.setup --competition titanic
+python -m kaggle.setup --competition dog-breed-identification
 
 # Reuse already-downloaded data, skip baseline generation
-python -m kaggle.setup --competition titanic --skip-download --skip-baseline
+python -m kaggle.setup --competition dog-breed-identification --skip-download --skip-baseline
 
 # Custom output location
-python -m kaggle.setup --competition titanic --output-dir data/titanic
+python -m kaggle.setup --competition dog-breed-identification --output-dir data/dog-breed-identification
 ```
 
 Output written to `kaggle/tasks/<competition>/`:
 
 ```
-kaggle/tasks/titanic/
+kaggle/tasks/dog-breed-identification/
 ├── competition_info.json    # title, description, evaluation metric, file list
 ├── data_schema.json         # column types, missing rates, sample values per file
-├── data/                    # train.csv, test.csv, sample_submission.csv, ...
+├── data/                    # train/ + test/ (images), labels.csv, sample_submission.csv, ...
 └── baseline/
     ├── baseline.py          # competition-specific model (approach chosen by the AI)
     ├── data.py              # AutoMLE data module (text framing for LLM fine-tuning)
@@ -143,27 +143,27 @@ Baseline generation supports Anthropic Claude (default), OpenAI, and any OpenAI-
 
 ```bash
 # Anthropic Claude (default) — set ANTHROPIC_API_KEY
-python -m kaggle.setup --competition titanic
+python -m kaggle.setup --competition dog-breed-identification
 
 # OpenAI GPT-4o — set OPENAI_API_KEY
-python -m kaggle.setup --competition titanic --ai-provider openai
+python -m kaggle.setup --competition dog-breed-identification --ai-provider openai
 
 # OpenAI with a specific model
-python -m kaggle.setup --competition titanic --ai-provider openai --ai-model o3-mini
+python -m kaggle.setup --competition dog-breed-identification --ai-provider openai --ai-model o3-mini
 
 # Groq or other OpenAI-compatible cloud — set OPENAI_API_KEY (or --ai-api-key)
-python -m kaggle.setup --competition titanic \
+python -m kaggle.setup --competition dog-breed-identification \
     --ai-base-url https://api.groq.com/openai/v1 \
     --ai-model llama-3.3-70b-versatile
 
 # Ollama (local, no API key required)
-python -m kaggle.setup --competition titanic \
+python -m kaggle.setup --competition dog-breed-identification \
     --ai-base-url http://localhost:11434/v1 \
     --ai-model llama3.2 \
     --ai-api-key local
 
 # LM Studio (local)
-python -m kaggle.setup --competition titanic \
+python -m kaggle.setup --competition dog-breed-identification \
     --ai-base-url http://localhost:1234/v1 \
     --ai-model local-model
 ```

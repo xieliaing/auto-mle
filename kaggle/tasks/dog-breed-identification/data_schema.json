@@ -1,0 +1,2481 @@
+{
+  "labels.csv": {
+    "file": "labels.csv",
+    "rows_in_sample": 1000,
+    "n_columns": 2,
+    "columns": [
+      {
+        "name": "id",
+        "dtype": "str",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1000,
+        "sample_values": [
+          "000bec180eb18c7604dcecc8fe0dba07",
+          "001513dfcb2ffafc82cccf4d8bbaba97",
+          "001cdf01b096e06d78e9e5112d419397",
+          "00214f311d5d2247d5dfe4fe24b2303d",
+          "0021f9ceb3235effd7fcde7f7538ed62"
+        ]
+      },
+      {
+        "name": "breed",
+        "dtype": "str",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 120,
+        "sample_values": [
+          "boston_bull",
+          "dingo",
+          "pekinese",
+          "bluetick",
+          "golden_retriever"
+        ]
+      }
+    ]
+  },
+  "sample_submission.csv": {
+    "file": "sample_submission.csv",
+    "rows_in_sample": 1000,
+    "n_columns": 121,
+    "columns": [
+      {
+        "name": "id",
+        "dtype": "str",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1000,
+        "sample_values": [
+          "000621fb3cbb32d8935728e48679680e",
+          "00102ee9d8eb90812350685311fe5890",
+          "0012a730dfa437f5f3613fb75efcd4ce",
+          "001510bc8570bbeee98c8d80c8a95ec1",
+          "001a5f3114548acdefa3d4da05474c2e"
+        ]
+      },
+      {
+        "name": "affenpinscher",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "afghan_hound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "african_hunting_dog",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "airedale",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "american_staffordshire_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "appenzeller",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "australian_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "basenji",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "basset",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "beagle",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "bedlington_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "bernese_mountain_dog",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "black-and-tan_coonhound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "blenheim_spaniel",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "bloodhound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "bluetick",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "border_collie",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "border_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "borzoi",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "boston_bull",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "bouvier_des_flandres",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "boxer",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "brabancon_griffon",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "briard",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "brittany_spaniel",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "bull_mastiff",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "cairn",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "cardigan",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "chesapeake_bay_retriever",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "chihuahua",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "chow",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "clumber",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "cocker_spaniel",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "collie",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "curly-coated_retriever",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "dandie_dinmont",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "dhole",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "dingo",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "doberman",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "english_foxhound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "english_setter",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "english_springer",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "entlebucher",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "eskimo_dog",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "flat-coated_retriever",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "french_bulldog",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "german_shepherd",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "german_short-haired_pointer",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "giant_schnauzer",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "golden_retriever",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "gordon_setter",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "great_dane",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "great_pyrenees",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "greater_swiss_mountain_dog",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "groenendael",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "ibizan_hound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "irish_setter",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "irish_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "irish_water_spaniel",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "irish_wolfhound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "italian_greyhound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "japanese_spaniel",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "keeshond",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "kelpie",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "kerry_blue_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "komondor",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "kuvasz",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "labrador_retriever",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "lakeland_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "leonberg",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "lhasa",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "malamute",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "malinois",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "maltese_dog",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "mexican_hairless",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "miniature_pinscher",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "miniature_poodle",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "miniature_schnauzer",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "newfoundland",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "norfolk_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "norwegian_elkhound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "norwich_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "old_english_sheepdog",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "otterhound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "papillon",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "pekinese",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "pembroke",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "pomeranian",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "pug",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "redbone",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "rhodesian_ridgeback",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "rottweiler",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "saint_bernard",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "saluki",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "samoyed",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "schipperke",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "scotch_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "scottish_deerhound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "sealyham_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "shetland_sheepdog",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "shih-tzu",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "siberian_husky",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "silky_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "soft-coated_wheaten_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "staffordshire_bullterrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "standard_poodle",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "standard_schnauzer",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "sussex_spaniel",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "tibetan_mastiff",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "tibetan_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "toy_poodle",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "toy_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "vizsla",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "walker_hound",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "weimaraner",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "welsh_springer_spaniel",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "west_highland_white_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "whippet",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "wire-haired_fox_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      },
+      {
+        "name": "yorkshire_terrier",
+        "dtype": "float64",
+        "n_missing": 0,
+        "pct_missing": 0.0,
+        "n_unique": 1,
+        "sample_values": [
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333,
+          0.0083333333333333
+        ]
+      }
+    ]
+  },
+  "_submission_format": {
+    "file": "sample_submission.csv",
+    "columns": [
+      "id",
+      "affenpinscher",
+      "afghan_hound",
+      "african_hunting_dog",
+      "airedale",
+      "american_staffordshire_terrier",
+      "appenzeller",
+      "australian_terrier",
+      "basenji",
+      "basset",
+      "beagle",
+      "bedlington_terrier",
+      "bernese_mountain_dog",
+      "black-and-tan_coonhound",
+      "blenheim_spaniel",
+      "bloodhound",
+      "bluetick",
+      "border_collie",
+      "border_terrier",
+      "borzoi",
+      "boston_bull",
+      "bouvier_des_flandres",
+      "boxer",
+      "brabancon_griffon",
+      "briard",
+      "brittany_spaniel",
+      "bull_mastiff",
+      "cairn",
+      "cardigan",
+      "chesapeake_bay_retriever",
+      "chihuahua",
+      "chow",
+      "clumber",
+      "cocker_spaniel",
+      "collie",
+      "curly-coated_retriever",
+      "dandie_dinmont",
+      "dhole",
+      "dingo",
+      "doberman",
+      "english_foxhound",
+      "english_setter",
+      "english_springer",
+      "entlebucher",
+      "eskimo_dog",
+      "flat-coated_retriever",
+      "french_bulldog",
+      "german_shepherd",
+      "german_short-haired_pointer",
+      "giant_schnauzer",
+      "golden_retriever",
+      "gordon_setter",
+      "great_dane",
+      "great_pyrenees",
+      "greater_swiss_mountain_dog",
+      "groenendael",
+      "ibizan_hound",
+      "irish_setter",
+      "irish_terrier",
+      "irish_water_spaniel",
+      "irish_wolfhound",
+      "italian_greyhound",
+      "japanese_spaniel",
+      "keeshond",
+      "kelpie",
+      "kerry_blue_terrier",
+      "komondor",
+      "kuvasz",
+      "labrador_retriever",
+      "lakeland_terrier",
+      "leonberg",
+      "lhasa",
+      "malamute",
+      "malinois",
+      "maltese_dog",
+      "mexican_hairless",
+      "miniature_pinscher",
+      "miniature_poodle",
+      "miniature_schnauzer",
+      "newfoundland",
+      "norfolk_terrier",
+      "norwegian_elkhound",
+      "norwich_terrier",
+      "old_english_sheepdog",
+      "otterhound",
+      "papillon",
+      "pekinese",
+      "pembroke",
+      "pomeranian",
+      "pug",
+      "redbone",
+      "rhodesian_ridgeback",
+      "rottweiler",
+      "saint_bernard",
+      "saluki",
+      "samoyed",
+      "schipperke",
+      "scotch_terrier",
+      "scottish_deerhound",
+      "sealyham_terrier",
+      "shetland_sheepdog",
+      "shih-tzu",
+      "siberian_husky",
+      "silky_terrier",
+      "soft-coated_wheaten_terrier",
+      "staffordshire_bullterrier",
+      "standard_poodle",
+      "standard_schnauzer",
+      "sussex_spaniel",
+      "tibetan_mastiff",
+      "tibetan_terrier",
+      "toy_poodle",
+      "toy_terrier",
+      "vizsla",
+      "walker_hound",
+      "weimaraner",
+      "welsh_springer_spaniel",
+      "west_highland_white_terrier",
+      "whippet",
+      "wire-haired_fox_terrier",
+      "yorkshire_terrier"
+    ],
+    "sample_rows": [
+      {
+        "id": "000621fb3cbb32d8935728e48679680e",
+        "affenpinscher": 0.0083333333333333,
+        "afghan_hound": 0.0083333333333333,
+        "african_hunting_dog": 0.0083333333333333,
+        "airedale": 0.0083333333333333,
+        "american_staffordshire_terrier": 0.0083333333333333,
+        "appenzeller": 0.0083333333333333,
+        "australian_terrier": 0.0083333333333333,
+        "basenji": 0.0083333333333333,
+        "basset": 0.0083333333333333,
+        "beagle": 0.0083333333333333,
+        "bedlington_terrier": 0.0083333333333333,
+        "bernese_mountain_dog": 0.0083333333333333,
+        "black-and-tan_coonhound": 0.0083333333333333,
+        "blenheim_spaniel": 0.0083333333333333,
+        "bloodhound": 0.0083333333333333,
+        "bluetick": 0.0083333333333333,
+        "border_collie": 0.0083333333333333,
+        "border_terrier": 0.0083333333333333,
+        "borzoi": 0.0083333333333333,
+        "boston_bull": 0.0083333333333333,
+        "bouvier_des_flandres": 0.0083333333333333,
+        "boxer": 0.0083333333333333,
+        "brabancon_griffon": 0.0083333333333333,
+        "briard": 0.0083333333333333,
+        "brittany_spaniel": 0.0083333333333333,
+        "bull_mastiff": 0.0083333333333333,
+        "cairn": 0.0083333333333333,
+        "cardigan": 0.0083333333333333,
+        "chesapeake_bay_retriever": 0.0083333333333333,
+        "chihuahua": 0.0083333333333333,
+        "chow": 0.0083333333333333,
+        "clumber": 0.0083333333333333,
+        "cocker_spaniel": 0.0083333333333333,
+        "collie": 0.0083333333333333,
+        "curly-coated_retriever": 0.0083333333333333,
+        "dandie_dinmont": 0.0083333333333333,
+        "dhole": 0.0083333333333333,
+        "dingo": 0.0083333333333333,
+        "doberman": 0.0083333333333333,
+        "english_foxhound": 0.0083333333333333,
+        "english_setter": 0.0083333333333333,
+        "english_springer": 0.0083333333333333,
+        "entlebucher": 0.0083333333333333,
+        "eskimo_dog": 0.0083333333333333,
+        "flat-coated_retriever": 0.0083333333333333,
+        "french_bulldog": 0.0083333333333333,
+        "german_shepherd": 0.0083333333333333,
+        "german_short-haired_pointer": 0.0083333333333333,
+        "giant_schnauzer": 0.0083333333333333,
+        "golden_retriever": 0.0083333333333333,
+        "gordon_setter": 0.0083333333333333,
+        "great_dane": 0.0083333333333333,
+        "great_pyrenees": 0.0083333333333333,
+        "greater_swiss_mountain_dog": 0.0083333333333333,
+        "groenendael": 0.0083333333333333,
+        "ibizan_hound": 0.0083333333333333,
+        "irish_setter": 0.0083333333333333,
+        "irish_terrier": 0.0083333333333333,
+        "irish_water_spaniel": 0.0083333333333333,
+        "irish_wolfhound": 0.0083333333333333,
+        "italian_greyhound": 0.0083333333333333,
+        "japanese_spaniel": 0.0083333333333333,
+        "keeshond": 0.0083333333333333,
+        "kelpie": 0.0083333333333333,
+        "kerry_blue_terrier": 0.0083333333333333,
+        "komondor": 0.0083333333333333,
+        "kuvasz": 0.0083333333333333,
+        "labrador_retriever": 0.0083333333333333,
+        "lakeland_terrier": 0.0083333333333333,
+        "leonberg": 0.0083333333333333,
+        "lhasa": 0.0083333333333333,
+        "malamute": 0.0083333333333333,
+        "malinois": 0.0083333333333333,
+        "maltese_dog": 0.0083333333333333,
+        "mexican_hairless": 0.0083333333333333,
+        "miniature_pinscher": 0.0083333333333333,
+        "miniature_poodle": 0.0083333333333333,
+        "miniature_schnauzer": 0.0083333333333333,
+        "newfoundland": 0.0083333333333333,
+        "norfolk_terrier": 0.0083333333333333,
+        "norwegian_elkhound": 0.0083333333333333,
+        "norwich_terrier": 0.0083333333333333,
+        "old_english_sheepdog": 0.0083333333333333,
+        "otterhound": 0.0083333333333333,
+        "papillon": 0.0083333333333333,
+        "pekinese": 0.0083333333333333,
+        "pembroke": 0.0083333333333333,
+        "pomeranian": 0.0083333333333333,
+        "pug": 0.0083333333333333,
+        "redbone": 0.0083333333333333,
+        "rhodesian_ridgeback": 0.0083333333333333,
+        "rottweiler": 0.0083333333333333,
+        "saint_bernard": 0.0083333333333333,
+        "saluki": 0.0083333333333333,
+        "samoyed": 0.0083333333333333,
+        "schipperke": 0.0083333333333333,
+        "scotch_terrier": 0.0083333333333333,
+        "scottish_deerhound": 0.0083333333333333,
+        "sealyham_terrier": 0.0083333333333333,
+        "shetland_sheepdog": 0.0083333333333333,
+        "shih-tzu": 0.0083333333333333,
+        "siberian_husky": 0.0083333333333333,
+        "silky_terrier": 0.0083333333333333,
+        "soft-coated_wheaten_terrier": 0.0083333333333333,
+        "staffordshire_bullterrier": 0.0083333333333333,
+        "standard_poodle": 0.0083333333333333,
+        "standard_schnauzer": 0.0083333333333333,
+        "sussex_spaniel": 0.0083333333333333,
+        "tibetan_mastiff": 0.0083333333333333,
+        "tibetan_terrier": 0.0083333333333333,
+        "toy_poodle": 0.0083333333333333,
+        "toy_terrier": 0.0083333333333333,
+        "vizsla": 0.0083333333333333,
+        "walker_hound": 0.0083333333333333,
+        "weimaraner": 0.0083333333333333,
+        "welsh_springer_spaniel": 0.0083333333333333,
+        "west_highland_white_terrier": 0.0083333333333333,
+        "whippet": 0.0083333333333333,
+        "wire-haired_fox_terrier": 0.0083333333333333,
+        "yorkshire_terrier": 0.0083333333333333
+      },
+      {
+        "id": "00102ee9d8eb90812350685311fe5890",
+        "affenpinscher": 0.0083333333333333,
+        "afghan_hound": 0.0083333333333333,
+        "african_hunting_dog": 0.0083333333333333,
+        "airedale": 0.0083333333333333,
+        "american_staffordshire_terrier": 0.0083333333333333,
+        "appenzeller": 0.0083333333333333,
+        "australian_terrier": 0.0083333333333333,
+        "basenji": 0.0083333333333333,
+        "basset": 0.0083333333333333,
+        "beagle": 0.0083333333333333,
+        "bedlington_terrier": 0.0083333333333333,
+        "bernese_mountain_dog": 0.0083333333333333,
+        "black-and-tan_coonhound": 0.0083333333333333,
+        "blenheim_spaniel": 0.0083333333333333,
+        "bloodhound": 0.0083333333333333,
+        "bluetick": 0.0083333333333333,
+        "border_collie": 0.0083333333333333,
+        "border_terrier": 0.0083333333333333,
+        "borzoi": 0.0083333333333333,
+        "boston_bull": 0.0083333333333333,
+        "bouvier_des_flandres": 0.0083333333333333,
+        "boxer": 0.0083333333333333,
+        "brabancon_griffon": 0.0083333333333333,
+        "briard": 0.0083333333333333,
+        "brittany_spaniel": 0.0083333333333333,
+        "bull_mastiff": 0.0083333333333333,
+        "cairn": 0.0083333333333333,
+        "cardigan": 0.0083333333333333,
+        "chesapeake_bay_retriever": 0.0083333333333333,
+        "chihuahua": 0.0083333333333333,
+        "chow": 0.0083333333333333,
+        "clumber": 0.0083333333333333,
+        "cocker_spaniel": 0.0083333333333333,
+        "collie": 0.0083333333333333,
+        "curly-coated_retriever": 0.0083333333333333,
+        "dandie_dinmont": 0.0083333333333333,
+        "dhole": 0.0083333333333333,
+        "dingo": 0.0083333333333333,
+        "doberman": 0.0083333333333333,
+        "english_foxhound": 0.0083333333333333,
+        "english_setter": 0.0083333333333333,
+        "english_springer": 0.0083333333333333,
+        "entlebucher": 0.0083333333333333,
+        "eskimo_dog": 0.0083333333333333,
+        "flat-coated_retriever": 0.0083333333333333,
+        "french_bulldog": 0.0083333333333333,
+        "german_shepherd": 0.0083333333333333,
+        "german_short-haired_pointer": 0.0083333333333333,
+        "giant_schnauzer": 0.0083333333333333,
+        "golden_retriever": 0.0083333333333333,
+        "gordon_setter": 0.0083333333333333,
+        "great_dane": 0.0083333333333333,
+        "great_pyrenees": 0.0083333333333333,
+        "greater_swiss_mountain_dog": 0.0083333333333333,
+        "groenendael": 0.0083333333333333,
+        "ibizan_hound": 0.0083333333333333,
+        "irish_setter": 0.0083333333333333,
+        "irish_terrier": 0.0083333333333333,
+        "irish_water_spaniel": 0.0083333333333333,
+        "irish_wolfhound": 0.0083333333333333,
+        "italian_greyhound": 0.0083333333333333,
+        "japanese_spaniel": 0.0083333333333333,
+        "keeshond": 0.0083333333333333,
+        "kelpie": 0.0083333333333333,
+        "kerry_blue_terrier": 0.0083333333333333,
+        "komondor": 0.0083333333333333,
+        "kuvasz": 0.0083333333333333,
+        "labrador_retriever": 0.0083333333333333,
+        "lakeland_terrier": 0.0083333333333333,
+        "leonberg": 0.0083333333333333,
+        "lhasa": 0.0083333333333333,
+        "malamute": 0.0083333333333333,
+        "malinois": 0.0083333333333333,
+        "maltese_dog": 0.0083333333333333,
+        "mexican_hairless": 0.0083333333333333,
+        "miniature_pinscher": 0.0083333333333333,
+        "miniature_poodle": 0.0083333333333333,
+        "miniature_schnauzer": 0.0083333333333333,
+        "newfoundland": 0.0083333333333333,
+        "norfolk_terrier": 0.0083333333333333,
+        "norwegian_elkhound": 0.0083333333333333,
+        "norwich_terrier": 0.0083333333333333,
+        "old_english_sheepdog": 0.0083333333333333,
+        "otterhound": 0.0083333333333333,
+        "papillon": 0.0083333333333333,
+        "pekinese": 0.0083333333333333,
+        "pembroke": 0.0083333333333333,
+        "pomeranian": 0.0083333333333333,
+        "pug": 0.0083333333333333,
+        "redbone": 0.0083333333333333,
+        "rhodesian_ridgeback": 0.0083333333333333,
+        "rottweiler": 0.0083333333333333,
+        "saint_bernard": 0.0083333333333333,
+        "saluki": 0.0083333333333333,
+        "samoyed": 0.0083333333333333,
+        "schipperke": 0.0083333333333333,
+        "scotch_terrier": 0.0083333333333333,
+        "scottish_deerhound": 0.0083333333333333,
+        "sealyham_terrier": 0.0083333333333333,
+        "shetland_sheepdog": 0.0083333333333333,
+        "shih-tzu": 0.0083333333333333,
+        "siberian_husky": 0.0083333333333333,
+        "silky_terrier": 0.0083333333333333,
+        "soft-coated_wheaten_terrier": 0.0083333333333333,
+        "staffordshire_bullterrier": 0.0083333333333333,
+        "standard_poodle": 0.0083333333333333,
+        "standard_schnauzer": 0.0083333333333333,
+        "sussex_spaniel": 0.0083333333333333,
+        "tibetan_mastiff": 0.0083333333333333,
+        "tibetan_terrier": 0.0083333333333333,
+        "toy_poodle": 0.0083333333333333,
+        "toy_terrier": 0.0083333333333333,
+        "vizsla": 0.0083333333333333,
+        "walker_hound": 0.0083333333333333,
+        "weimaraner": 0.0083333333333333,
+        "welsh_springer_spaniel": 0.0083333333333333,
+        "west_highland_white_terrier": 0.0083333333333333,
+        "whippet": 0.0083333333333333,
+        "wire-haired_fox_terrier": 0.0083333333333333,
+        "yorkshire_terrier": 0.0083333333333333
+      },
+      {
+        "id": "0012a730dfa437f5f3613fb75efcd4ce",
+        "affenpinscher": 0.0083333333333333,
+        "afghan_hound": 0.0083333333333333,
+        "african_hunting_dog": 0.0083333333333333,
+        "airedale": 0.0083333333333333,
+        "american_staffordshire_terrier": 0.0083333333333333,
+        "appenzeller": 0.0083333333333333,
+        "australian_terrier": 0.0083333333333333,
+        "basenji": 0.0083333333333333,
+        "basset": 0.0083333333333333,
+        "beagle": 0.0083333333333333,
+        "bedlington_terrier": 0.0083333333333333,
+        "bernese_mountain_dog": 0.0083333333333333,
+        "black-and-tan_coonhound": 0.0083333333333333,
+        "blenheim_spaniel": 0.0083333333333333,
+        "bloodhound": 0.0083333333333333,
+        "bluetick": 0.0083333333333333,
+        "border_collie": 0.0083333333333333,
+        "border_terrier": 0.0083333333333333,
+        "borzoi": 0.0083333333333333,
+        "boston_bull": 0.0083333333333333,
+        "bouvier_des_flandres": 0.0083333333333333,
+        "boxer": 0.0083333333333333,
+        "brabancon_griffon": 0.0083333333333333,
+        "briard": 0.0083333333333333,
+        "brittany_spaniel": 0.0083333333333333,
+        "bull_mastiff": 0.0083333333333333,
+        "cairn": 0.0083333333333333,
+        "cardigan": 0.0083333333333333,
+        "chesapeake_bay_retriever": 0.0083333333333333,
+        "chihuahua": 0.0083333333333333,
+        "chow": 0.0083333333333333,
+        "clumber": 0.0083333333333333,
+        "cocker_spaniel": 0.0083333333333333,
+        "collie": 0.0083333333333333,
+        "curly-coated_retriever": 0.0083333333333333,
+        "dandie_dinmont": 0.0083333333333333,
+        "dhole": 0.0083333333333333,
+        "dingo": 0.0083333333333333,
+        "doberman": 0.0083333333333333,
+        "english_foxhound": 0.0083333333333333,
+        "english_setter": 0.0083333333333333,
+        "english_springer": 0.0083333333333333,
+        "entlebucher": 0.0083333333333333,
+        "eskimo_dog": 0.0083333333333333,
+        "flat-coated_retriever": 0.0083333333333333,
+        "french_bulldog": 0.0083333333333333,
+        "german_shepherd": 0.0083333333333333,
+        "german_short-haired_pointer": 0.0083333333333333,
+        "giant_schnauzer": 0.0083333333333333,
+        "golden_retriever": 0.0083333333333333,
+        "gordon_setter": 0.0083333333333333,
+        "great_dane": 0.0083333333333333,
+        "great_pyrenees": 0.0083333333333333,
+        "greater_swiss_mountain_dog": 0.0083333333333333,
+        "groenendael": 0.0083333333333333,
+        "ibizan_hound": 0.0083333333333333,
+        "irish_setter": 0.0083333333333333,
+        "irish_terrier": 0.0083333333333333,
+        "irish_water_spaniel": 0.0083333333333333,
+        "irish_wolfhound": 0.0083333333333333,
+        "italian_greyhound": 0.0083333333333333,
+        "japanese_spaniel": 0.0083333333333333,
+        "keeshond": 0.0083333333333333,
+        "kelpie": 0.0083333333333333,
+        "kerry_blue_terrier": 0.0083333333333333,
+        "komondor": 0.0083333333333333,
+        "kuvasz": 0.0083333333333333,
+        "labrador_retriever": 0.0083333333333333,
+        "lakeland_terrier": 0.0083333333333333,
+        "leonberg": 0.0083333333333333,
+        "lhasa": 0.0083333333333333,
+        "malamute": 0.0083333333333333,
+        "malinois": 0.0083333333333333,
+        "maltese_dog": 0.0083333333333333,
+        "mexican_hairless": 0.0083333333333333,
+        "miniature_pinscher": 0.0083333333333333,
+        "miniature_poodle": 0.0083333333333333,
+        "miniature_schnauzer": 0.0083333333333333,
+        "newfoundland": 0.0083333333333333,
+        "norfolk_terrier": 0.0083333333333333,
+        "norwegian_elkhound": 0.0083333333333333,
+        "norwich_terrier": 0.0083333333333333,
+        "old_english_sheepdog": 0.0083333333333333,
+        "otterhound": 0.0083333333333333,
+        "papillon": 0.0083333333333333,
+        "pekinese": 0.0083333333333333,
+        "pembroke": 0.0083333333333333,
+        "pomeranian": 0.0083333333333333,
+        "pug": 0.0083333333333333,
+        "redbone": 0.0083333333333333,
+        "rhodesian_ridgeback": 0.0083333333333333,
+        "rottweiler": 0.0083333333333333,
+        "saint_bernard": 0.0083333333333333,
+        "saluki": 0.0083333333333333,
+        "samoyed": 0.0083333333333333,
+        "schipperke": 0.0083333333333333,
+        "scotch_terrier": 0.0083333333333333,
+        "scottish_deerhound": 0.0083333333333333,
+        "sealyham_terrier": 0.0083333333333333,
+        "shetland_sheepdog": 0.0083333333333333,
+        "shih-tzu": 0.0083333333333333,
+        "siberian_husky": 0.0083333333333333,
+        "silky_terrier": 0.0083333333333333,
+        "soft-coated_wheaten_terrier": 0.0083333333333333,
+        "staffordshire_bullterrier": 0.0083333333333333,
+        "standard_poodle": 0.0083333333333333,
+        "standard_schnauzer": 0.0083333333333333,
+        "sussex_spaniel": 0.0083333333333333,
+        "tibetan_mastiff": 0.0083333333333333,
+        "tibetan_terrier": 0.0083333333333333,
+        "toy_poodle": 0.0083333333333333,
+        "toy_terrier": 0.0083333333333333,
+        "vizsla": 0.0083333333333333,
+        "walker_hound": 0.0083333333333333,
+        "weimaraner": 0.0083333333333333,
+        "welsh_springer_spaniel": 0.0083333333333333,
+        "west_highland_white_terrier": 0.0083333333333333,
+        "whippet": 0.0083333333333333,
+        "wire-haired_fox_terrier": 0.0083333333333333,
+        "yorkshire_terrier": 0.0083333333333333
+      },
+      {
+        "id": "001510bc8570bbeee98c8d80c8a95ec1",
+        "affenpinscher": 0.0083333333333333,
+        "afghan_hound": 0.0083333333333333,
+        "african_hunting_dog": 0.0083333333333333,
+        "airedale": 0.0083333333333333,
+        "american_staffordshire_terrier": 0.0083333333333333,
+        "appenzeller": 0.0083333333333333,
+        "australian_terrier": 0.0083333333333333,
+        "basenji": 0.0083333333333333,
+        "basset": 0.0083333333333333,
+        "beagle": 0.0083333333333333,
+        "bedlington_terrier": 0.0083333333333333,
+        "bernese_mountain_dog": 0.0083333333333333,
+        "black-and-tan_coonhound": 0.0083333333333333,
+        "blenheim_spaniel": 0.0083333333333333,
+        "bloodhound": 0.0083333333333333,
+        "bluetick": 0.0083333333333333,
+        "border_collie": 0.0083333333333333,
+        "border_terrier": 0.0083333333333333,
+        "borzoi": 0.0083333333333333,
+        "boston_bull": 0.0083333333333333,
+        "bouvier_des_flandres": 0.0083333333333333,
+        "boxer": 0.0083333333333333,
+        "brabancon_griffon": 0.0083333333333333,
+        "briard": 0.0083333333333333,
+        "brittany_spaniel": 0.0083333333333333,
+        "bull_mastiff": 0.0083333333333333,
+        "cairn": 0.0083333333333333,
+        "cardigan": 0.0083333333333333,
+        "chesapeake_bay_retriever": 0.0083333333333333,
+        "chihuahua": 0.0083333333333333,
+        "chow": 0.0083333333333333,
+        "clumber": 0.0083333333333333,
+        "cocker_spaniel": 0.0083333333333333,
+        "collie": 0.0083333333333333,
+        "curly-coated_retriever": 0.0083333333333333,
+        "dandie_dinmont": 0.0083333333333333,
+        "dhole": 0.0083333333333333,
+        "dingo": 0.0083333333333333,
+        "doberman": 0.0083333333333333,
+        "english_foxhound": 0.0083333333333333,
+        "english_setter": 0.0083333333333333,
+        "english_springer": 0.0083333333333333,
+        "entlebucher": 0.0083333333333333,
+        "eskimo_dog": 0.0083333333333333,
+        "flat-coated_retriever": 0.0083333333333333,
+        "french_bulldog": 0.0083333333333333,
+        "german_shepherd": 0.0083333333333333,
+        "german_short-haired_pointer": 0.0083333333333333,
+        "giant_schnauzer": 0.0083333333333333,
+        "golden_retriever": 0.0083333333333333,
+        "gordon_setter": 0.0083333333333333,
+        "great_dane": 0.0083333333333333,
+        "great_pyrenees": 0.0083333333333333,
+        "greater_swiss_mountain_dog": 0.0083333333333333,
+        "groenendael": 0.0083333333333333,
+        "ibizan_hound": 0.0083333333333333,
+        "irish_setter": 0.0083333333333333,
+        "irish_terrier": 0.0083333333333333,
+        "irish_water_spaniel": 0.0083333333333333,
+        "irish_wolfhound": 0.0083333333333333,
+        "italian_greyhound": 0.0083333333333333,
+        "japanese_spaniel": 0.0083333333333333,
+        "keeshond": 0.0083333333333333,
+        "kelpie": 0.0083333333333333,
+        "kerry_blue_terrier": 0.0083333333333333,
+        "komondor": 0.0083333333333333,
+        "kuvasz": 0.0083333333333333,
+        "labrador_retriever": 0.0083333333333333,
+        "lakeland_terrier": 0.0083333333333333,
+        "leonberg": 0.0083333333333333,
+        "lhasa": 0.0083333333333333,
+        "malamute": 0.0083333333333333,
+        "malinois": 0.0083333333333333,
+        "maltese_dog": 0.0083333333333333,
+        "mexican_hairless": 0.0083333333333333,
+        "miniature_pinscher": 0.0083333333333333,
+        "miniature_poodle": 0.0083333333333333,
+        "miniature_schnauzer": 0.0083333333333333,
+        "newfoundland": 0.0083333333333333,
+        "norfolk_terrier": 0.0083333333333333,
+        "norwegian_elkhound": 0.0083333333333333,
+        "norwich_terrier": 0.0083333333333333,
+        "old_english_sheepdog": 0.0083333333333333,
+        "otterhound": 0.0083333333333333,
+        "papillon": 0.0083333333333333,
+        "pekinese": 0.0083333333333333,
+        "pembroke": 0.0083333333333333,
+        "pomeranian": 0.0083333333333333,
+        "pug": 0.0083333333333333,
+        "redbone": 0.0083333333333333,
+        "rhodesian_ridgeback": 0.0083333333333333,
+        "rottweiler": 0.0083333333333333,
+        "saint_bernard": 0.0083333333333333,
+        "saluki": 0.0083333333333333,
+        "samoyed": 0.0083333333333333,
+        "schipperke": 0.0083333333333333,
+        "scotch_terrier": 0.0083333333333333,
+        "scottish_deerhound": 0.0083333333333333,
+        "sealyham_terrier": 0.0083333333333333,
+        "shetland_sheepdog": 0.0083333333333333,
+        "shih-tzu": 0.0083333333333333,
+        "siberian_husky": 0.0083333333333333,
+        "silky_terrier": 0.0083333333333333,
+        "soft-coated_wheaten_terrier": 0.0083333333333333,
+        "staffordshire_bullterrier": 0.0083333333333333,
+        "standard_poodle": 0.0083333333333333,
+        "standard_schnauzer": 0.0083333333333333,
+        "sussex_spaniel": 0.0083333333333333,
+        "tibetan_mastiff": 0.0083333333333333,
+        "tibetan_terrier": 0.0083333333333333,
+        "toy_poodle": 0.0083333333333333,
+        "toy_terrier": 0.0083333333333333,
+        "vizsla": 0.0083333333333333,
+        "walker_hound": 0.0083333333333333,
+        "weimaraner": 0.0083333333333333,
+        "welsh_springer_spaniel": 0.0083333333333333,
+        "west_highland_white_terrier": 0.0083333333333333,
+        "whippet": 0.0083333333333333,
+        "wire-haired_fox_terrier": 0.0083333333333333,
+        "yorkshire_terrier": 0.0083333333333333
+      },
+      {
+        "id": "001a5f3114548acdefa3d4da05474c2e",
+        "affenpinscher": 0.0083333333333333,
+        "afghan_hound": 0.0083333333333333,
+        "african_hunting_dog": 0.0083333333333333,
+        "airedale": 0.0083333333333333,
+        "american_staffordshire_terrier": 0.0083333333333333,
+        "appenzeller": 0.0083333333333333,
+        "australian_terrier": 0.0083333333333333,
+        "basenji": 0.0083333333333333,
+        "basset": 0.0083333333333333,
+        "beagle": 0.0083333333333333,
+        "bedlington_terrier": 0.0083333333333333,
+        "bernese_mountain_dog": 0.0083333333333333,
+        "black-and-tan_coonhound": 0.0083333333333333,
+        "blenheim_spaniel": 0.0083333333333333,
+        "bloodhound": 0.0083333333333333,
+        "bluetick": 0.0083333333333333,
+        "border_collie": 0.0083333333333333,
+        "border_terrier": 0.0083333333333333,
+        "borzoi": 0.0083333333333333,
+        "boston_bull": 0.0083333333333333,
+        "bouvier_des_flandres": 0.0083333333333333,
+        "boxer": 0.0083333333333333,
+        "brabancon_griffon": 0.0083333333333333,
+        "briard": 0.0083333333333333,
+        "brittany_spaniel": 0.0083333333333333,
+        "bull_mastiff": 0.0083333333333333,
+        "cairn": 0.0083333333333333,
+        "cardigan": 0.0083333333333333,
+        "chesapeake_bay_retriever": 0.0083333333333333,
+        "chihuahua": 0.0083333333333333,
+        "chow": 0.0083333333333333,
+        "clumber": 0.0083333333333333,
+        "cocker_spaniel": 0.0083333333333333,
+        "collie": 0.0083333333333333,
+        "curly-coated_retriever": 0.0083333333333333,
+        "dandie_dinmont": 0.0083333333333333,
+        "dhole": 0.0083333333333333,
+        "dingo": 0.0083333333333333,
+        "doberman": 0.0083333333333333,
+        "english_foxhound": 0.0083333333333333,
+        "english_setter": 0.0083333333333333,
+        "english_springer": 0.0083333333333333,
+        "entlebucher": 0.0083333333333333,
+        "eskimo_dog": 0.0083333333333333,
+        "flat-coated_retriever": 0.0083333333333333,
+        "french_bulldog": 0.0083333333333333,
+        "german_shepherd": 0.0083333333333333,
+        "german_short-haired_pointer": 0.0083333333333333,
+        "giant_schnauzer": 0.0083333333333333,
+        "golden_retriever": 0.0083333333333333,
+        "gordon_setter": 0.0083333333333333,
+        "great_dane": 0.0083333333333333,
+        "great_pyrenees": 0.0083333333333333,
+        "greater_swiss_mountain_dog": 0.0083333333333333,
+        "groenendael": 0.0083333333333333,
+        "ibizan_hound": 0.0083333333333333,
+        "irish_setter": 0.0083333333333333,
+        "irish_terrier": 0.0083333333333333,
+        "irish_water_spaniel": 0.0083333333333333,
+        "irish_wolfhound": 0.0083333333333333,
+        "italian_greyhound": 0.0083333333333333,
+        "japanese_spaniel": 0.0083333333333333,
+        "keeshond": 0.0083333333333333,
+        "kelpie": 0.0083333333333333,
+        "kerry_blue_terrier": 0.0083333333333333,
+        "komondor": 0.0083333333333333,
+        "kuvasz": 0.0083333333333333,
+        "labrador_retriever": 0.0083333333333333,
+        "lakeland_terrier": 0.0083333333333333,
+        "leonberg": 0.0083333333333333,
+        "lhasa": 0.0083333333333333,
+        "malamute": 0.0083333333333333,
+        "malinois": 0.0083333333333333,
+        "maltese_dog": 0.0083333333333333,
+        "mexican_hairless": 0.0083333333333333,
+        "miniature_pinscher": 0.0083333333333333,
+        "miniature_poodle": 0.0083333333333333,
+        "miniature_schnauzer": 0.0083333333333333,
+        "newfoundland": 0.0083333333333333,
+        "norfolk_terrier": 0.0083333333333333,
+        "norwegian_elkhound": 0.0083333333333333,
+        "norwich_terrier": 0.0083333333333333,
+        "old_english_sheepdog": 0.0083333333333333,
+        "otterhound": 0.0083333333333333,
+        "papillon": 0.0083333333333333,
+        "pekinese": 0.0083333333333333,
+        "pembroke": 0.0083333333333333,
+        "pomeranian": 0.0083333333333333,
+        "pug": 0.0083333333333333,
+        "redbone": 0.0083333333333333,
+        "rhodesian_ridgeback": 0.0083333333333333,
+        "rottweiler": 0.0083333333333333,
+        "saint_bernard": 0.0083333333333333,
+        "saluki": 0.0083333333333333,
+        "samoyed": 0.0083333333333333,
+        "schipperke": 0.0083333333333333,
+        "scotch_terrier": 0.0083333333333333,
+        "scottish_deerhound": 0.0083333333333333,
+        "sealyham_terrier": 0.0083333333333333,
+        "shetland_sheepdog": 0.0083333333333333,
+        "shih-tzu": 0.0083333333333333,
+        "siberian_husky": 0.0083333333333333,
+        "silky_terrier": 0.0083333333333333,
+        "soft-coated_wheaten_terrier": 0.0083333333333333,
+        "staffordshire_bullterrier": 0.0083333333333333,
+        "standard_poodle": 0.0083333333333333,
+        "standard_schnauzer": 0.0083333333333333,
+        "sussex_spaniel": 0.0083333333333333,
+        "tibetan_mastiff": 0.0083333333333333,
+        "tibetan_terrier": 0.0083333333333333,
+        "toy_poodle": 0.0083333333333333,
+        "toy_terrier": 0.0083333333333333,
+        "vizsla": 0.0083333333333333,
+        "walker_hound": 0.0083333333333333,
+        "weimaraner": 0.0083333333333333,
+        "welsh_springer_spaniel": 0.0083333333333333,
+        "west_highland_white_terrier": 0.0083333333333333,
+        "whippet": 0.0083333333333333,
+        "wire-haired_fox_terrier": 0.0083333333333333,
+        "yorkshire_terrier": 0.0083333333333333
+      }
+    ]
+  }
+}
