@@ -194,6 +194,7 @@ def main(argv=None) -> None:
     p.add_argument("--lr", type=float, default=2e-4)
     p.add_argument("--grad-accum", type=int, default=8)
     p.add_argument("--lora-r", type=int, default=16)
+    p.add_argument("--lora-target", choices=["qv", "attn", "all_linear"], default="attn")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--output-dir", default=str(TASK_DIR / "vlm_runs" / "run1"))
     args = p.parse_args(argv)
@@ -220,11 +221,17 @@ def main(argv=None) -> None:
     )
     model.config.use_cache = False
 
-    print("[3/5] Attaching LoRA (attention projections of the LM) ...")
+    print(f"[3/5] Attaching LoRA (target={args.lora_target}) ...")
+    targets = {
+        "qv": ["q_proj", "v_proj"],
+        "attn": ["q_proj", "k_proj", "v_proj", "o_proj"],
+        "all_linear": ["q_proj", "k_proj", "v_proj", "o_proj",
+                       "gate_proj", "up_proj", "down_proj"],
+    }[args.lora_target]
     lora = LoraConfig(
         r=args.lora_r, lora_alpha=args.lora_r * 2, lora_dropout=0.05, bias="none",
         task_type="CAUSAL_LM",
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        target_modules=targets,
     )
     model = get_peft_model(model, lora)
     model.enable_input_require_grads()  # needed for grad checkpointing on a frozen base
@@ -266,10 +273,21 @@ def main(argv=None) -> None:
     print("[5/5] Evaluating on held-out val ...")
     model.config.use_cache = True
     acc = evaluate(model, processor, val_ds, breeds)
+    metrics = {
+        "model": args.model, "lora_r": args.lora_r, "lora_target": args.lora_target,
+        "lr": args.lr, "epochs": args.epochs, "grad_accum": args.grad_accum,
+        "train_subset": len(train_df), "val_subset": len(val_ds),
+        "n_breeds": len(breeds), "seed": args.seed,
+        "train_loss": float(train_out.training_loss), "val_accuracy": float(acc),
+    }
+    import json
+    (out / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+
     print("\n==============================================")
     print(f"  train_loss = {train_out.training_loss:.4f}")
     print(f"  val_accuracy = {acc:.4f}  (n={len(val_ds)}, {len(breeds)} breeds)")
     print(f"  random baseline ~= {1 / len(breeds):.4f}")
+    print(f"  metrics -> {out / 'metrics.json'}")
     print("==============================================")
 
 
