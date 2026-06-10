@@ -1,0 +1,1 @@
+{"run": "run1", "model": "Qwen/Qwen3-VL-2B-Instruct", "lora_r": 16, "lora_target": "attn", "lr": 0.0002, "epochs": 2, "train_subset": 600, "val_subset": 150, "n_breeds": 120, "train_loss": 0.3153, "val_accuracy": 0.66, "note": "baseline"}

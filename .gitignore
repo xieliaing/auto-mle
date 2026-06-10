@@ -6,3 +6,5 @@ __pycache__/
 results/
 # Downloaded Kaggle competition data — large, regenerable via kaggle.setup
 kaggle/tasks/*/data/
+# VLM fine-tuning run artifacts (adapters, checkpoints) — large, regenerable
+kaggle/tasks/*/vlm_runs/
