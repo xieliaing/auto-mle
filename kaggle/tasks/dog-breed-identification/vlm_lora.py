@@ -183,6 +183,110 @@ def evaluate(model, processor, val_ds: DogBreedDataset, breeds: list[str]) -> fl
     return correct / n if n else 0.0
 
 
+# --- Multi-class log loss (Kaggle metric) ------------------------------------
+#
+# A generative VLM emits a string, not a class distribution. To get the 120-way
+# probabilities the log-loss metric needs, we score every breed name by its
+# teacher-forced sequence log-likelihood given the same image+prompt, then
+# softmax over the 120 candidates -> a proper distribution. Kaggle clips each
+# probability to [1e-15, 1-1e-15] before taking the log.
+
+def _breed_answer_ids(processor, breeds, prompt, ref_image) -> list[list[int]]:
+    """Token ids of each breed name as it follows the generation prompt.
+
+    Derived as (full chat) minus (prompt-only chat) on a reference image, with
+    trailing special tokens (e.g. <|im_end|>) stripped so only the breed-name
+    tokens are scored. Breed answer tokens are image-independent, so one
+    reference image suffices.
+    """
+    tok = processor.tokenizer
+    specials = set(tok.all_special_ids)
+    prompt_msgs = [{"role": "user", "content": [
+        {"type": "image", "image": ref_image}, {"type": "text", "text": prompt}]}]
+    prompt_ids = processor.apply_chat_template(
+        prompt_msgs, tokenize=True, add_generation_prompt=True,
+        return_dict=True, return_tensors="pt")["input_ids"][0].tolist()
+    plen = len(prompt_ids)
+    out = []
+    for b in breeds:
+        full_msgs = prompt_msgs + [{"role": "assistant",
+                                    "content": [{"type": "text", "text": b}]}]
+        full_ids = processor.apply_chat_template(
+            full_msgs, tokenize=True, add_generation_prompt=False,
+            return_dict=True, return_tensors="pt")["input_ids"][0].tolist()
+        ans = full_ids[plen:]
+        while ans and ans[-1] in specials:  # drop trailing <|im_end|> / newline-eos
+            ans.pop()
+        out.append(ans)
+    return out
+
+
+@torch.no_grad()
+def _score_image(model, processor, image, prompt, breed_ids, sub_batch=8):
+    """Return a (n_breeds,) tensor of summed answer-token log-probs for one image."""
+    prefix = processor.apply_chat_template(
+        [{"role": "user", "content": [
+            {"type": "image", "image": image}, {"type": "text", "text": prompt}]}],
+        tokenize=True, add_generation_prompt=True, return_dict=True, return_tensors="pt",
+    ).to(model.device)
+    pre_ids = prefix["input_ids"][0]
+    P = pre_ids.shape[0]
+    pad_id = processor.tokenizer.pad_token_id or 0
+    scores = torch.full((len(breed_ids),), float("-inf"))
+
+    for s in range(0, len(breed_ids), sub_batch):
+        group = breed_ids[s:s + sub_batch]
+        B = len(group)
+        maxA = max(len(a) for a in group)
+        input_ids = torch.full((B, P + maxA), pad_id, dtype=torch.long)
+        attn = torch.zeros((B, P + maxA), dtype=torch.long)
+        for j, ans in enumerate(group):
+            input_ids[j, :P] = pre_ids
+            input_ids[j, P:P + len(ans)] = torch.tensor(ans, dtype=torch.long)
+            attn[j, :P + len(ans)] = 1
+        batch = {
+            "input_ids": input_ids.to(model.device),
+            "attention_mask": attn.to(model.device),
+            "pixel_values": prefix["pixel_values"].repeat(B, 1).to(model.device),
+            "image_grid_thw": prefix["image_grid_thw"].repeat(B, 1).to(model.device),
+        }
+        logits = model(**batch).logits  # (B, P+maxA, V)
+        # token at absolute pos P+k is predicted by logits at pos P-1+k
+        ans_logits = logits[:, P - 1:P - 1 + maxA, :]
+        logp = torch.log_softmax(ans_logits.float(), dim=-1)  # (B, maxA, V)
+        for j, ans in enumerate(group):
+            idx = torch.tensor(ans, device=model.device)
+            tok_lp = logp[j, torch.arange(len(ans), device=model.device), idx]
+            scores[s + j] = tok_lp.sum().cpu()
+    return scores
+
+
+@torch.no_grad()
+def evaluate_logloss(model, processor, val_ds, breeds, prompt, sub_batch=8):
+    """Return (logloss, scoring_top1_accuracy) over the val set via breed scoring."""
+    model.eval()
+    breed_idx = {b: i for i, b in enumerate(breeds)}
+    ref_img = val_ds[0]["messages"][0]["content"][0]["image"]
+    breed_ids = _breed_answer_ids(processor, breeds, prompt, ref_img)
+    n = len(val_ds)
+    total_ll, correct = 0.0, 0
+    for i in range(n):
+        ex = val_ds[i]
+        img = ex["messages"][0]["content"][0]["image"]
+        scores = _score_image(model, processor, img, prompt, breed_ids, sub_batch)
+        probs = torch.softmax(scores, dim=0)
+        true_i = breed_idx[ex["breed"]]
+        p_true = float(probs[true_i].clamp(1e-15, 1 - 1e-15))
+        total_ll += -torch.log(torch.tensor(p_true)).item()
+        if int(torch.argmax(scores)) == true_i:
+            correct += 1
+        if (i + 1) % 25 == 0 or i + 1 == n:
+            print(f"  logloss-eval {i + 1}/{n}  "
+                  f"running logloss={total_ll / (i + 1):.4f} acc={correct / (i + 1):.4f}")
+    model.train()
+    return total_ll / n if n else float("nan"), correct / n if n else 0.0
+
+
 # --- Main ---------------------------------------------------------------------
 
 def main(argv=None) -> None:
@@ -197,6 +301,10 @@ def main(argv=None) -> None:
     p.add_argument("--lora-target", choices=["qv", "attn", "all_linear"], default="attn")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--output-dir", default=str(TASK_DIR / "vlm_runs" / "run1"))
+    p.add_argument("--eval-adapter", default=None,
+                   help="Path to a trained adapter dir; skips training and only evaluates.")
+    p.add_argument("--sub-batch", type=int, default=8,
+                   help="Candidate breeds scored per forward pass during log-loss eval.")
     args = p.parse_args(argv)
 
     torch.manual_seed(args.seed)
@@ -221,6 +329,26 @@ def main(argv=None) -> None:
     )
     model.config.use_cache = False
 
+    val_ds = DogBreedDataset(val_df, prompt, with_answer=True)
+
+    # --- Eval-only mode: load a trained adapter and skip training ------------
+    if args.eval_adapter:
+        from peft import PeftModel
+        print(f"[3/5] Loading adapter {args.eval_adapter} (eval-only) ...")
+        model = PeftModel.from_pretrained(model, args.eval_adapter)
+        model.config.use_cache = True
+        print("[5/5] Evaluating on held-out val ...")
+        acc = evaluate(model, processor, val_ds, breeds)
+        logloss, acc_scored = evaluate_logloss(
+            model, processor, val_ds, breeds, prompt, args.sub_batch)
+        print("\n==============================================")
+        print(f"  val_accuracy (generation) = {acc:.4f}")
+        print(f"  val_accuracy (scoring)    = {acc_scored:.4f}")
+        print(f"  val_logloss               = {logloss:.4f}")
+        print(f"  random-guess logloss      = {__import__('math').log(len(breeds)):.4f}")
+        print("==============================================")
+        return
+
     print(f"[3/5] Attaching LoRA (target={args.lora_target}) ...")
     targets = {
         "qv": ["q_proj", "v_proj"],
@@ -238,7 +366,6 @@ def main(argv=None) -> None:
     model.print_trainable_parameters()
 
     train_ds = DogBreedDataset(train_df, prompt, with_answer=True)
-    val_ds = DogBreedDataset(val_df, prompt, with_answer=True)
     collator = VLMCollator(processor)
 
     print("[4/5] Training ...")
@@ -273,20 +400,24 @@ def main(argv=None) -> None:
     print("[5/5] Evaluating on held-out val ...")
     model.config.use_cache = True
     acc = evaluate(model, processor, val_ds, breeds)
+    logloss, acc_scored = evaluate_logloss(
+        model, processor, val_ds, breeds, prompt, args.sub_batch)
     metrics = {
         "model": args.model, "lora_r": args.lora_r, "lora_target": args.lora_target,
         "lr": args.lr, "epochs": args.epochs, "grad_accum": args.grad_accum,
         "train_subset": len(train_df), "val_subset": len(val_ds),
         "n_breeds": len(breeds), "seed": args.seed,
         "train_loss": float(train_out.training_loss), "val_accuracy": float(acc),
+        "val_accuracy_scored": float(acc_scored), "val_logloss": float(logloss),
     }
     import json
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
     print("\n==============================================")
     print(f"  train_loss = {train_out.training_loss:.4f}")
-    print(f"  val_accuracy = {acc:.4f}  (n={len(val_ds)}, {len(breeds)} breeds)")
-    print(f"  random baseline ~= {1 / len(breeds):.4f}")
+    print(f"  val_accuracy (generation) = {acc:.4f}  (n={len(val_ds)}, {len(breeds)} breeds)")
+    print(f"  val_accuracy (scoring)    = {acc_scored:.4f}")
+    print(f"  val_logloss               = {logloss:.4f}  (random ~= {1.0:.4f}->{__import__('math').log(len(breeds)):.4f})")
     print(f"  metrics -> {out / 'metrics.json'}")
     print("==============================================")
 
