@@ -23,6 +23,7 @@ Usage (from repo root):
 from __future__ import annotations
 
 import argparse
+import copy
 import random
 import re
 from pathlib import Path
@@ -221,43 +222,74 @@ def _breed_answer_ids(processor, breeds, prompt, ref_image) -> list[list[int]]:
     return out
 
 
+def _rope_owner(model):
+    """Find the submodule that owns mrope state (get_rope_index + rope_deltas)."""
+    for mod in model.modules():
+        if hasattr(mod, "rope_deltas") and hasattr(mod, "get_rope_index"):
+            return mod
+    raise RuntimeError("could not locate the mrope owner module on this model")
+
+
 @torch.no_grad()
 def _score_image(model, processor, image, prompt, breed_ids, sub_batch=8):
-    """Return a (n_breeds,) tensor of summed answer-token log-probs for one image."""
+    """Return a (n_breeds,) tensor of summed answer-token log-probs for one image.
+
+    The image+prompt prefix is identical across all candidate breeds, so it is
+    forwarded ONCE (use_cache=True); each breed is then scored as a short
+    continuation off the cached prefix, computing logits only at its answer
+    positions. mm_token_type_ids is passed so the prefix gets correct 3D mrope
+    positions, and the text continuation reuses them via cache_position +
+    rope_delta (matching the model's own position bookkeeping in generate()).
+    """
     prefix = processor.apply_chat_template(
         [{"role": "user", "content": [
             {"type": "image", "image": image}, {"type": "text", "text": prompt}]}],
         tokenize=True, add_generation_prompt=True, return_dict=True, return_tensors="pt",
     ).to(model.device)
-    pre_ids = prefix["input_ids"][0]
-    P = pre_ids.shape[0]
+    pre_ids = prefix["input_ids"]
+    P = pre_ids.shape[1]
     pad_id = processor.tokenizer.pad_token_id or 0
-    scores = torch.full((len(breed_ids),), float("-inf"))
 
+    prefix_out = model(
+        input_ids=pre_ids, attention_mask=prefix["attention_mask"],
+        pixel_values=prefix["pixel_values"], image_grid_thw=prefix["image_grid_thw"],
+        mm_token_type_ids=prefix["mm_token_type_ids"], use_cache=True,
+    )
+    prefix_cache = prefix_out.past_key_values
+    # last prefix position predicts the first answer token
+    first_logp = torch.log_softmax(prefix_out.logits[:, -1, :].float(), dim=-1)[0]  # (V,)
+    rope_delta = _rope_owner(model).rope_deltas  # (1, 1), set by the mm prefix forward
+
+    scores = torch.full((len(breed_ids),), float("-inf"))
     for s in range(0, len(breed_ids), sub_batch):
         group = breed_ids[s:s + sub_batch]
         B = len(group)
-        maxA = max(len(a) for a in group)
-        input_ids = torch.full((B, P + maxA), pad_id, dtype=torch.long)
-        attn = torch.zeros((B, P + maxA), dtype=torch.long)
+        lens = [len(a) for a in group]
+        maxA = max(lens)
+        ans_ids = torch.full((B, maxA), pad_id, dtype=torch.long)
         for j, ans in enumerate(group):
-            input_ids[j, :P] = pre_ids
-            input_ids[j, P:P + len(ans)] = torch.tensor(ans, dtype=torch.long)
-            attn[j, :P + len(ans)] = 1
-        batch = {
-            "input_ids": input_ids.to(model.device),
-            "attention_mask": attn.to(model.device),
-            "pixel_values": prefix["pixel_values"].repeat(B, 1).to(model.device),
-            "image_grid_thw": prefix["image_grid_thw"].repeat(B, 1).to(model.device),
-        }
-        logits = model(**batch).logits  # (B, P+maxA, V)
-        # token at absolute pos P+k is predicted by logits at pos P-1+k
-        ans_logits = logits[:, P - 1:P - 1 + maxA, :]
-        logp = torch.log_softmax(ans_logits.float(), dim=-1)  # (B, maxA, V)
+            ans_ids[j, :len(ans)] = torch.tensor(ans, dtype=torch.long)
+        ans_mask = (torch.arange(maxA)[None, :] < torch.tensor(lens)[:, None]).long()
+        full_mask = torch.cat(
+            [torch.ones(B, P, dtype=torch.long), ans_mask], dim=1).to(model.device)
+        cache = copy.deepcopy(prefix_cache)
+        cache.batch_repeat_interleave(B)  # share the prefix cache across the B breeds
+        cache_position = torch.arange(P, P + maxA, device=model.device)
+        base = (cache_position + rope_delta.to(cache_position.device)).reshape(1, -1)
+        pos = base.expand(B, maxA).unsqueeze(0).expand(3, B, maxA).contiguous()
+        cont = model(
+            input_ids=ans_ids.to(model.device), attention_mask=full_mask,
+            past_key_values=cache, position_ids=pos, cache_position=cache_position,
+            use_cache=True,
+        )
+        clogp = torch.log_softmax(cont.logits.float(), dim=-1)  # (B, maxA, V)
+        # token 0 from the prefix logits; token k>0 from continuation logit k-1
         for j, ans in enumerate(group):
-            idx = torch.tensor(ans, device=model.device)
-            tok_lp = logp[j, torch.arange(len(ans), device=model.device), idx]
-            scores[s + j] = tok_lp.sum().cpu()
+            total = first_logp[ans[0]].clone()
+            if len(ans) > 1:
+                ks = torch.arange(0, len(ans) - 1, device=model.device)
+                total = total + clogp[j, ks, torch.tensor(ans[1:], device=model.device)].sum()
+            scores[s + j] = total.cpu()
     return scores
 
 
@@ -305,6 +337,9 @@ def main(argv=None) -> None:
                    help="Path to a trained adapter dir; skips training and only evaluates.")
     p.add_argument("--sub-batch", type=int, default=8,
                    help="Candidate breeds scored per forward pass during log-loss eval.")
+    p.add_argument("--skip-generation", action="store_true",
+                   help="Eval-only: skip the slow generation pass; report the "
+                        "scoring-based accuracy from the (cached) log-loss pass.")
     args = p.parse_args(argv)
 
     torch.manual_seed(args.seed)
@@ -338,14 +373,24 @@ def main(argv=None) -> None:
         model = PeftModel.from_pretrained(model, args.eval_adapter)
         model.config.use_cache = True
         print("[5/5] Evaluating on held-out val ...")
-        acc = evaluate(model, processor, val_ds, breeds)
+        acc = None if args.skip_generation else evaluate(model, processor, val_ds, breeds)
         logloss, acc_scored = evaluate_logloss(
             model, processor, val_ds, breeds, prompt, args.sub_batch)
+        import json
+        metrics = {
+            "model": args.model, "eval_adapter": args.eval_adapter,
+            "val_subset": len(val_ds), "n_breeds": len(breeds), "seed": args.seed,
+            "val_accuracy": (None if acc is None else float(acc)),
+            "val_accuracy_scored": float(acc_scored), "val_logloss": float(logloss),
+        }
+        (out / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
         print("\n==============================================")
-        print(f"  val_accuracy (generation) = {acc:.4f}")
+        gen_str = "skipped" if acc is None else f"{acc:.4f}"
+        print(f"  val_accuracy (generation) = {gen_str}")
         print(f"  val_accuracy (scoring)    = {acc_scored:.4f}")
         print(f"  val_logloss               = {logloss:.4f}")
         print(f"  random-guess logloss      = {__import__('math').log(len(breeds)):.4f}")
+        print(f"  metrics -> {out / 'metrics.json'}")
         print("==============================================")
         return
 
