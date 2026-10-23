@@ -73,11 +73,13 @@ def evaluate(
     batch_size: int = 8,
     max_seq_len: int = 512,
     progress: bool = True,
+    return_records: bool = False,
     **kwargs,
 ) -> dict:
     """
     Score every row of eval_data. Returns {accuracy, n_eval, tp, tn, fp, fn,
-    precision, recall, f1, yes_token_id, no_token_id}.
+    precision, recall, f1, yes_token_id, no_token_id}, plus per-example
+    "records" for defect analysis when return_records=True.
     """
     eval_df = eval_data
     model, tokenizer = _load_for_eval(model_name, adapter_dir)
@@ -87,6 +89,7 @@ def evaluate(
     n = len(rows)
     correct = 0
     tp = tn = fp = fn = 0
+    records = []
 
     iterator = range(0, n, batch_size)
     if progress:
@@ -109,9 +112,17 @@ def evaluate(
         yes_l = last[:, yes_id]
         no_l = last[:, no_id]
         preds = (yes_l > no_l).long().cpu().tolist()
+        margins = (yes_l - no_l).float().cpu().tolist()
 
-        for r, p in zip(chunk, preds):
+        for i, (r, p) in enumerate(zip(chunk, preds)):
             y = int(r["Label"])
+            if return_records:
+                records.append({
+                    "id": start + i,
+                    "input": {"title1": r["title1"], "title2": r["title2"]},
+                    "expected": y, "predicted": p, "is_defect": p != y,
+                    "score": round(margins[i], 4),  # logit(Yes) - logit(No)
+                })
             if p == y:
                 correct += 1
             if p == 1 and y == 1:
@@ -132,10 +143,13 @@ def evaluate(
     del model
     torch.cuda.empty_cache()
 
-    return {
+    out = {
         "accuracy": acc,
         "n_eval": n,
         "tp": tp, "tn": tn, "fp": fp, "fn": fn,
         "precision": prec, "recall": rec, "f1": f1,
         "yes_token_id": int(yes_id), "no_token_id": int(no_id),
     }
+    if return_records:
+        out["records"] = records
+    return out

@@ -227,6 +227,12 @@ def load_eval_dataset(
     return df
 
 
+def load_public_dataset(**kwargs) -> Optional[pd.DataFrame]:
+    """Return the public eval frame (ranking + defect analysis), or None if unset."""
+    path = kwargs.get("public_path") or os.environ.get("AUTOMLE_PUBLIC_DATA")
+    return load_csv(path) if path else None
+
+
 def get_collator(tokenizer, max_seq_len: int):
     """Return the product-pair collator that masks loss to the answer token."""
     from .trainer import ProductPairCollator

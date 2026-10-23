@@ -13,3 +13,6 @@ tqdm>=4.66.0
 
 # Proposer agent (LLM-driven config generation)
 anthropic>=0.40.0
+
+# Defect analysis with --analysis-provider openai (optional)
+# openai>=1.0.0

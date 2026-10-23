@@ -4,6 +4,8 @@ A reusable template for running autonomous LoRA fine-tuning experiments. You plu
 
 **Propose → Train → Evaluate → Analyze → Repeat.**
 
+With a public eval set (`data.load_public_dataset()`), runs are ranked on the public set. After each run its defects are sent to an LLM (Anthropic or OpenAI), which writes an improvement plan to `runs/<exp_id>/defect_analysis/plan.md`; a config it proposes becomes the next experiment. The regular eval set becomes private: it's scored only on the final promoted runs. See *Public/private evaluation* in `program.md`.
+
 A built-in proposer (seed plan + Claude-driven from round 7 onward) searches across:
 1. **Fine-tuning strategy** — LoRA rank, alpha, target modules, learning rate, scheduler, epochs.
 2. **Data strategy** — class balancing, subset size (plus any task-specific knobs your `data.py` honors).

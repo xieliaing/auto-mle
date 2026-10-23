@@ -20,3 +20,15 @@ key:
 budget: 10          # max exploration runs before promotion phase
 final_top_k: 3      # top-K configs re-run at full scale
 target_accuracy:    # set e.g. 0.92 to stop exploration early (null = disabled)
+
+# --- Public/private evaluation + defect analysis ----------------------------
+# If data.load_public_dataset() returns a set, it ranks every run and its
+# defects are sent to an LLM for an improvement plan (a proposed next_config
+# overrides the proposer). The eval set is then private: scored only on the
+# Phase-B promoted runs and reported as the final number. Without a public set,
+# the eval set ranks runs and defect analysis is off. Without an API key the
+# prompt is saved to <run>/defect_analysis/prompt.md and the call is skipped.
+defect_analysis: true
+analysis_provider: anthropic   # anthropic (ANTHROPIC_API_KEY) | openai (OPENAI_API_KEY)
+analysis_model:                # blank = provider default (claude-opus-5-5 / gpt-4o)
+analysis_max_examples: 50      # cap on defect examples sent per analysis

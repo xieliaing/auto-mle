@@ -82,6 +82,10 @@ Optional:
 ```python
 def get_collator(tokenizer, max_seq_len: int):
     """Return a data collator. If absent, the trainer falls back to a default."""
+
+def load_public_dataset(**kwargs):
+    """Return a fixed public eval set (same type as load_eval_dataset), disjoint
+    from the eval set, or None. Enables the public/private protocol below."""
 ```
 
 ### `evaluator.py`
@@ -96,6 +100,27 @@ Optional:
 ```python
 PRIMARY_METRIC: str = "accuracy"  # name of the key in the returned dict to optimize
 ```
+
+Optional — public-set defect analysis. When called with `return_records=True`, add a `"records"` list of per-example dicts. The evaluator decides what a defect is:
+```python
+{"id": ..., "input": ..., "expected": ..., "predicted": ...,
+ "is_defect": bool, "score": float}   # score optional (margin, residual, ...)
+```
+
+### Public/private evaluation and defect analysis
+
+When `data.load_public_dataset()` returns a set, evaluation follows a Kaggle-style split:
+
+| Set | Source | Scored | Used for |
+|---|---|---|---|
+| Public | `load_public_dataset()` | every run | ranking (`accuracy`, leaderboard, plateau, top-K) and defect analysis |
+| Private | `load_eval_dataset()` | Phase-B promoted runs only | the final reported number (`extra.private_score`, leaderboard `private` column) |
+
+The private set is never used to select anything, and its examples are never sent to the LLM, so the final private score is an unbiased estimate. A large public-to-private gap means the loop has overfit the public set. `--skip-full-phase` skips Phase B, so it also skips private scoring. Without a public set the classic protocol applies: the eval set ranks runs and defect analysis is off.
+
+After every run, the orchestrator sends the public-set defects to an LLM (`--analysis-provider anthropic|openai`; `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`). The defect summary and up to `analysis_max_examples` truncated examples go into the prompt. The LLM returns defect patterns, a prioritized improvement plan (each action marked loop-executable or needs-a-human), and optionally a `next_config`. If it returns one, that config **replaces the proposer** for the next run, including seed rounds. Otherwise the loop-executable actions are passed to the LLM proposer as context.
+
+Per run, `runs/<exp_id>/` gains `public_records.jsonl` and `defect_analysis/{defects.json, prompt.md, plan.json, plan.md}`. Without an API key only `defects.json` and `prompt.md` are written, and the loop continues. Disable with `--no-defect-analysis` (the public/private split stays in effect). Public examples are sent to the external API, so don't put data there that must not leave the machine.
 
 ### `trainer.py` (template, modifiable per task)
 

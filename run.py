@@ -59,6 +59,14 @@ def parse_args(argv=None):
     p.add_argument("--skip-full-phase", action="store_true",
                    help="Skip the final full-tier promotion runs.")
 
+    # --- Golden-set defect analysis ------------------------------------------
+    p.add_argument("--no-defect-analysis", action="store_true",
+                   help="Disable post-training public-set defect analysis + LLM improvement plan.")
+    p.add_argument("--analysis-provider", choices=["anthropic", "openai"], default=None,
+                   help="LLM provider for defect analysis (default: anthropic).")
+    p.add_argument("--analysis-model", default=None,
+                   help="Override the analysis model (default: provider's default).")
+
     # --- Branch management ---------------------------------------------------
     p.add_argument("--no-branch", action="store_true",
                    help="Skip git branch creation (run in current branch).")
@@ -93,6 +101,11 @@ def main(argv=None):
     final_top_k = pick(args.final_top_k,      "final_top_k", 3)
     target_acc  = pick(args.target_accuracy,  "target_accuracy", None)
 
+    defect_analysis   = not args.no_defect_analysis and defaults.get("defect_analysis", True)
+    analysis_provider = pick(args.analysis_provider, "analysis_provider", "anthropic")
+    analysis_model    = pick(args.analysis_model,    "analysis_model",    None)
+    analysis_max_ex   = defaults.get("analysis_max_examples", 50)
+
     # --- Validate required inputs --------------------------------------------
     missing = [flag for flag, val in [
         ("--checkpoint",     checkpoint),
@@ -113,6 +126,11 @@ def main(argv=None):
     if use_llm and not os.environ.get("ANTHROPIC_API_KEY"):
         print("[warn] ANTHROPIC_API_KEY not set; LLM proposer will fall back to heuristics.")
         print("       Pass --no-llm-proposer to silence this warning.")
+
+    key_env = "ANTHROPIC_API_KEY" if analysis_provider == "anthropic" else "OPENAI_API_KEY"
+    if defect_analysis and not os.environ.get(key_env):
+        print(f"[warn] {key_env} not set; defect analysis will save prompts but skip the LLM call.")
+        print("       Pass --no-defect-analysis to disable it.")
 
     # --- Create / resume task folder + branch --------------------------------
     if not args.no_branch:
@@ -166,6 +184,10 @@ def main(argv=None):
         use_llm_proposer=use_llm,
         target_accuracy=target_acc,
         skip_full_phase=args.skip_full_phase,
+        defect_analysis=defect_analysis,
+        analysis_provider=analysis_provider,
+        analysis_model=analysis_model,
+        analysis_max_examples=analysis_max_ex,
     )
 
     print("\n=== DONE ===")
@@ -174,6 +196,8 @@ def main(argv=None):
     if summary.get("best"):
         b = summary["best"]
         print(f"Best        : {b['exp_id']}  metric={b['accuracy']:.4f}")
+    for p in summary.get("private", []):
+        print(f"Private     : {p['exp_id']}  public={p['public']:.4f}  private={p['private']:.4f}")
 
 
 if __name__ == "__main__":

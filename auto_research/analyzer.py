@@ -39,15 +39,16 @@ def write_leaderboard(results: List[dict], out_path: str | Path) -> None:
     lines.append(f"_Total runs: {len(results)} ({len(ok)} succeeded, {len(failed)} failed)_")
     lines.append("")
     if ok:
-        lines.append("| Rank | exp_id | tier | accuracy | f1 | loss | LoRA(r/tgt) | lr | notes |")
-        lines.append("|-----:|--------|------|---------:|---:|------|-------------|---:|-------|")
+        lines.append("| Rank | exp_id | tier | accuracy | private | f1 | loss | LoRA(r/tgt) | lr | notes |")
+        lines.append("|-----:|--------|------|---------:|--------:|---:|------|-------------|---:|-------|")
         for i, r in enumerate(ok, 1):
             cfg = r["config"]
-            lines.append("| {rank} | `{exp_id}` | {tier} | {acc:.4f} | {f1} | {loss} | {r}/{tgt} | {lr:.0e} | {notes} |".format(
+            lines.append("| {rank} | `{exp_id}` | {tier} | {acc:.4f} | {private} | {f1} | {loss} | {r}/{tgt} | {lr:.0e} | {notes} |".format(
                 rank=i,
                 exp_id=r["exp_id"],
                 tier=cfg.get("tier", "small"),
                 acc=r["accuracy"],
+                private=("{:.4f}".format(r["extra"]["private_score"]) if "private_score" in r.get("extra", {}) else "—"),
                 f1=("{:.4f}".format(r["extra"].get("f1")) if r.get("extra", {}).get("f1") is not None else "—"),
                 loss=cfg["loss"]["name"],
                 r=cfg["lora"]["r"],
