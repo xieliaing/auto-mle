@@ -62,10 +62,18 @@ def parse_args(argv=None):
     # --- Golden-set defect analysis ------------------------------------------
     p.add_argument("--no-defect-analysis", action="store_true",
                    help="Disable post-training public-set defect analysis + LLM improvement plan.")
-    p.add_argument("--analysis-provider", choices=["anthropic", "openai"], default=None,
-                   help="LLM provider for defect analysis (default: anthropic).")
+    p.add_argument("--analysis-provider", choices=["anthropic", "openai", "local"], default=None,
+                   help="LLM provider for defect analysis (default: anthropic). 'local' = an "
+                        "OpenAI-compatible server (vLLM/SGLang/Ollama/llama.cpp) at --analysis-base-url.")
     p.add_argument("--analysis-model", default=None,
-                   help="Override the analysis model (default: provider's default).")
+                   help="Override the analysis model (default: provider's default; for 'local', "
+                        "the first model the server lists).")
+    p.add_argument("--analysis-base-url", default=None,
+                   help="Base URL of the local server, e.g. http://spark.local:8000/v1 "
+                        "(default: $ANALYSIS_BASE_URL).")
+    p.add_argument("--proposer-provider", choices=["anthropic", "local"], default=None,
+                   help="LLM for the experiment proposer (default: anthropic). 'local' shares "
+                        "the analysis base URL and model.")
 
     # --- Branch management ---------------------------------------------------
     p.add_argument("--no-branch", action="store_true",
@@ -105,6 +113,10 @@ def main(argv=None):
     analysis_provider = pick(args.analysis_provider, "analysis_provider", "anthropic")
     analysis_model    = pick(args.analysis_model,    "analysis_model",    None)
     analysis_max_ex   = defaults.get("analysis_max_examples", 50)
+    analysis_base_url = pick(args.analysis_base_url, "analysis_base_url",
+                             os.environ.get("ANALYSIS_BASE_URL"))
+    proposer_provider = pick(args.proposer_provider, "proposer_provider", "anthropic")
+    hardware          = defaults.get("hardware") or ""
 
     # --- Validate required inputs --------------------------------------------
     missing = [flag for flag, val in [
@@ -123,14 +135,21 @@ def main(argv=None):
             sys.exit(2)
 
     use_llm = not args.no_llm_proposer
-    if use_llm and not os.environ.get("ANTHROPIC_API_KEY"):
+    if use_llm and proposer_provider == "local" and not analysis_base_url:
+        print("[warn] No --analysis-base-url for the local proposer; it will fall back to heuristics.")
+    elif use_llm and proposer_provider == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
         print("[warn] ANTHROPIC_API_KEY not set; LLM proposer will fall back to heuristics.")
         print("       Pass --no-llm-proposer to silence this warning.")
 
-    key_env = "ANTHROPIC_API_KEY" if analysis_provider == "anthropic" else "OPENAI_API_KEY"
-    if defect_analysis and not os.environ.get(key_env):
-        print(f"[warn] {key_env} not set; defect analysis will save prompts but skip the LLM call.")
-        print("       Pass --no-defect-analysis to disable it.")
+    if defect_analysis and analysis_provider == "local":
+        if not analysis_base_url:
+            print("[warn] No --analysis-base-url for the local provider; defect analysis will "
+                  "save prompts but skip the LLM call.")
+    else:
+        key_env = "ANTHROPIC_API_KEY" if analysis_provider == "anthropic" else "OPENAI_API_KEY"
+        if defect_analysis and not os.environ.get(key_env):
+            print(f"[warn] {key_env} not set; defect analysis will save prompts but skip the LLM call.")
+            print("       Pass --no-defect-analysis to disable it.")
 
     # --- Create / resume task folder + branch --------------------------------
     if not args.no_branch:
@@ -188,6 +207,9 @@ def main(argv=None):
         analysis_provider=analysis_provider,
         analysis_model=analysis_model,
         analysis_max_examples=analysis_max_ex,
+        analysis_base_url=analysis_base_url,
+        proposer_provider=proposer_provider,
+        hardware=hardware,
     )
 
     print("\n=== DONE ===")

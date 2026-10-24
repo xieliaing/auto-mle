@@ -212,6 +212,9 @@ def propose_next(
     next_idx: int,
     use_llm: bool = True,
     skill_context: str = "",
+    provider: str = "anthropic",
+    llm_model: Optional[str] = None,
+    base_url: Optional[str] = None,
 ) -> ExperimentConfig:
     """
     Propose the next experiment config.
@@ -219,6 +222,8 @@ def propose_next(
     `results` is a list of dicts loaded from results.jsonl. `next_idx` is just
     used for fallback exp_id naming. `model_name` is the base LLM being fine-
     tuned (provided so the proposer's hypothesis can reference it).
+    `provider="local"` sends the proposal to an OpenAI-compatible server at
+    `base_url` (see defect_analysis.call_llm) instead of Anthropic.
     """
     # Phase 1: seed plan
     plan = seed_plan()
@@ -228,15 +233,32 @@ def propose_next(
     # Phase 2: LLM-driven
     if use_llm:
         try:
-            return _propose_via_llm(results, model_name, skill_context=skill_context)
+            return _propose_via_llm(results, model_name, skill_context=skill_context,
+                                    provider=provider, llm_model=llm_model, base_url=base_url)
         except Exception as e:
             print(f"[proposer] LLM proposal failed: {type(e).__name__}: {e}")
             print("[proposer] falling back to heuristic")
     return _heuristic_fallback(results, next_idx)
 
 
-def _propose_via_llm(results: List[dict], model_name: str, skill_context: str = "") -> ExperimentConfig:
-    """Call Claude to propose the next config. Raises on any failure."""
+def _propose_via_llm(results: List[dict], model_name: str, skill_context: str = "",
+                     provider: str = "anthropic", llm_model: Optional[str] = None,
+                     base_url: Optional[str] = None) -> ExperimentConfig:
+    """Call Claude (or a local model) to propose the next config. Raises on any failure."""
+    user_msg = PROPOSER_USER_TEMPLATE.format(
+        model_name=model_name,
+        history=_format_history(results),
+        best=_format_best(results),
+    )
+    if skill_context:
+        user_msg += f"\n\n{skill_context}"
+
+    if provider == "local":
+        from .defect_analysis import call_llm, _parse_json
+        raw = call_llm(PROPOSER_SYSTEM, user_msg, provider="local",
+                       model=llm_model, base_url=base_url)
+        return ExperimentConfig.from_dict(_parse_json(raw))
+
     try:
         import anthropic
     except ImportError as e:
@@ -247,14 +269,6 @@ def _propose_via_llm(results: List[dict], model_name: str, skill_context: str = 
         raise RuntimeError("ANTHROPIC_API_KEY not set")
 
     client = anthropic.Anthropic(api_key=api_key)
-
-    user_msg = PROPOSER_USER_TEMPLATE.format(
-        model_name=model_name,
-        history=_format_history(results),
-        best=_format_best(results),
-    )
-    if skill_context:
-        user_msg += f"\n\n{skill_context}"
 
     resp = client.messages.create(
         model=PROPOSER_MODEL,

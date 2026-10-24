@@ -29,6 +29,9 @@ target_accuracy:    # set e.g. 0.92 to stop exploration early (null = disabled)
 # the eval set ranks runs and defect analysis is off. Without an API key the
 # prompt is saved to <run>/defect_analysis/prompt.md and the call is skipped.
 defect_analysis: true
-analysis_provider: anthropic   # anthropic (ANTHROPIC_API_KEY) | openai (OPENAI_API_KEY)
-analysis_model:                # blank = provider default (claude-opus-5-5 / gpt-4o)
-analysis_max_examples: 50      # cap on defect examples sent per analysis
+analysis_provider: anthropic   # anthropic (ANTHROPIC_API_KEY) | openai (OPENAI_API_KEY) | local
+analysis_model:                # blank = provider default (claude-opus-5-5 / gpt-4o; local: first served model)
+analysis_max_examples: 50      # cap on defect examples (and attached images) sent per analysis
+analysis_base_url:             # local only: OpenAI-compatible server, e.g. http://spark.local:8000/v1
+proposer_provider: anthropic   # anthropic | local (uses analysis_base_url + analysis_model)
+hardware:                      # told to the analyst, e.g. "1x RTX 4090 Laptop, 16 GB VRAM"

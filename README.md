@@ -4,7 +4,7 @@ A reusable template for running autonomous LoRA fine-tuning experiments. You plu
 
 **Propose → Train → Evaluate → Analyze → Repeat.**
 
-With a public eval set (`data.load_public_dataset()`), runs are ranked on the public set. After each run its defects are sent to an LLM (Anthropic or OpenAI), which writes an improvement plan to `runs/<exp_id>/defect_analysis/plan.md`; a config it proposes becomes the next experiment. The regular eval set becomes private: it's scored only on the final promoted runs. See *Public/private evaluation* in `program.md`.
+With a public eval set (`data.load_public_dataset()`), runs are ranked on the public set. After each run its defects (with their images, for vision tasks) are sent to an LLM (Anthropic, OpenAI, or a local OpenAI-compatible server such as vLLM on another machine in your network), which writes an improvement plan to `runs/<exp_id>/defect_analysis/plan.md`; a config it proposes becomes the next experiment. The regular eval set becomes private: it's scored only on the final promoted runs. See *Public/private evaluation* in `program.md`.
 
 A built-in proposer (seed plan + Claude-driven from round 7 onward) searches across:
 1. **Fine-tuning strategy** — LoRA rank, alpha, target modules, learning rate, scheduler, epochs.
@@ -36,11 +36,12 @@ AutoMLE/
 │   └── setup.py                  # orchestration CLI (auth → fetch → download → inspect → baseline)
 │
 ├── examples/
-│   └── product_comparison/       # reference task: text-only binary product matching
-│       ├── data.py
-│       ├── evaluator.py
-│       ├── prompts.py
-│       └── trainer.py
+│   ├── product_comparison/       # reference task: text-only binary product matching
+│   │   ├── data.py
+│   │   ├── evaluator.py
+│   │   ├── prompts.py
+│   │   └── trainer.py
+│   └── dog_breed_vlm/            # VLM task: Qwen3-VL LoRA on Kaggle dog breeds (wraps vlm_lora.py)
 │
 └── tasks/<key>/                  # created on demand per task
     ├── meta.json
@@ -203,6 +204,23 @@ python run.py \
 ```
 
 The example expects CSVs with columns `title1`, `title2`, `Label` (binary).
+
+### Vision task with a local analyst
+
+`examples/dog_breed_vlm/` trains a VLM (Qwen3-VL-2B + LoRA, about 5 GB peak VRAM) on the Kaggle dog-breed data and sends each run's misclassified photos to a vision model served on another machine, e.g. vLLM on a DGX Spark. That model also proposes the experiments, so no API key is needed:
+
+```bash
+# on the Spark (any OpenAI-compatible server works)
+vllm serve <your-35B-A3B-vision-model> --host 0.0.0.0 --port 8000
+
+# on the training machine (--no-branch: use the example's own VLM trainer.py)
+python run.py --no-branch --key dog-breed-vlm \
+    --checkpoint Qwen/Qwen3-VL-2B-Instruct \
+    --data-file examples/dog_breed_vlm/data.py \
+    --evaluator-file examples/dog_breed_vlm/evaluator.py \
+    --analysis-provider local --proposer-provider local \
+    --analysis-base-url http://<spark-host>:8000/v1
+```
 
 ## Plugging in a new task
 

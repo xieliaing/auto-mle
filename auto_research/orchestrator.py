@@ -251,6 +251,9 @@ def orchestrate(
     analysis_provider: str = "anthropic",
     analysis_model: Optional[str] = None,
     analysis_max_examples: int = 50,
+    analysis_base_url: Optional[str] = None,
+    proposer_provider: str = "anthropic",
+    hardware: str = "",
 ) -> dict:
     """Run the full pipeline end-to-end against a task's plug-in modules."""
     data_mod = _load_task_module("task_data", data_path)
@@ -269,7 +272,8 @@ def orchestrate(
         print("[orchestrate] Public/private protocol: public set ranks runs and drives defect analysis; "
               "eval set is private, scored only on Phase-B promoted runs.")
     llm_kw = dict(provider=analysis_provider, model=analysis_model,
-                  max_examples=analysis_max_examples)
+                  max_examples=analysis_max_examples, base_url=analysis_base_url,
+                  hardware=hardware)
     eval_kw = dict(public_data=public_data, collect_records=defect_analysis)
 
     results_dir = Path(results_dir)
@@ -305,6 +309,10 @@ def orchestrate(
                 next_idx=next_idx,
                 use_llm=use_llm_proposer,
                 skill_context=plan_context(plan) if plan else "",
+                provider=proposer_provider,
+                # A local proposer shares the analysis endpoint and model.
+                llm_model=analysis_model if proposer_provider == "local" else None,
+                base_url=analysis_base_url,
             )
         if cfg.exp_id in completed_ids:
             cfg.exp_id = f"{cfg.exp_id}_v{next_idx}"

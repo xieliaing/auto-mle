@@ -104,7 +104,8 @@ PRIMARY_METRIC: str = "accuracy"  # name of the key in the returned dict to opti
 Optional — public-set defect analysis. When called with `return_records=True`, add a `"records"` list of per-example dicts. The evaluator decides what a defect is:
 ```python
 {"id": ..., "input": ..., "expected": ..., "predicted": ...,
- "is_defect": bool, "score": float}   # score optional (margin, residual, ...)
+ "is_defect": bool, "score": float,   # score optional (margin, residual, ...)
+ "image": "path/to/example.jpg"}      # optional: attached to the analyst prompt
 ```
 
 ### Public/private evaluation and defect analysis
@@ -118,7 +119,9 @@ When `data.load_public_dataset()` returns a set, evaluation follows a Kaggle-sty
 
 The private set is never used to select anything, and its examples are never sent to the LLM, so the final private score is an unbiased estimate. A large public-to-private gap means the loop has overfit the public set. `--skip-full-phase` skips Phase B, so it also skips private scoring. Without a public set the classic protocol applies: the eval set ranks runs and defect analysis is off.
 
-After every run, the orchestrator sends the public-set defects to an LLM (`--analysis-provider anthropic|openai`; `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`). The defect summary and up to `analysis_max_examples` truncated examples go into the prompt. The LLM returns defect patterns, a prioritized improvement plan (each action marked loop-executable or needs-a-human), and optionally a `next_config`. If it returns one, that config **replaces the proposer** for the next run, including seed rounds. Otherwise the loop-executable actions are passed to the LLM proposer as context.
+After every run, the orchestrator sends the public-set defects to an LLM (`--analysis-provider anthropic|openai|local`; `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`). The defect summary and up to `analysis_max_examples` truncated examples go into the prompt, along with the images of those examples that carry an `image` path (downscaled to 512 px). The `hardware` setting in the YAML is passed to the analyst too.
+
+`local` is any OpenAI-compatible server (vLLM, SGLang, Ollama, llama.cpp), for example a 35B-A3B vision model served on a DGX Spark in the LAN. Set it with `--analysis-base-url http://<host>:8000/v1` (or `$ANALYSIS_BASE_URL`). It needs no key (`$ANALYSIS_API_KEY` if the server wants one) and defaults to the first model the server lists. `--proposer-provider local` sends the experiment proposals to the same server and model, so the loop needs no API key at all. With a local server, the data never leaves your network. The LLM returns defect patterns, a prioritized improvement plan (each action marked loop-executable or needs-a-human), and optionally a `next_config`. If it returns one, that config **replaces the proposer** for the next run, including seed rounds. Otherwise the loop-executable actions are passed to the LLM proposer as context.
 
 Per run, `runs/<exp_id>/` gains `public_records.jsonl` and `defect_analysis/{defects.json, prompt.md, plan.json, plan.md}`. Without an API key only `defects.json` and `prompt.md` are written, and the loop continues. Disable with `--no-defect-analysis` (the public/private split stays in effect). Public examples are sent to the external API, so don't put data there that must not leave the machine.
 
@@ -130,7 +133,7 @@ def train_one(cfg: ExperimentConfig, train_dataset, model_name: str,
     """Returns {"train_loss": float, "adapter_dir": str}"""
 ```
 
-See `examples/product_comparison/` for a working reference implementation of all three.
+See `examples/product_comparison/` for a working reference implementation of all three, and `examples/dog_breed_vlm/` for a vision-language task (its own `trainer.py`, so run it with `--no-branch`).
 
 ---
 

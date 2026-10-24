@@ -13,9 +13,17 @@ Evaluator contract extension (opt-in):
     The evaluator decides what counts as a defect (wrong label, residual over
     a threshold, judge verdict, ...), so this module stays task-agnostic.
 
-Providers: "anthropic" (ANTHROPIC_API_KEY) or "openai" (OPENAI_API_KEY).
-Without a key the prompt is still written to disk and the LLM call is skipped,
-so the loop keeps running and the prompt can be inspected.
+    A record may also carry "image": a local image path. The sampled defect
+    examples' images are attached to the prompt (downscaled, base64), so a
+    vision-capable analyst can see what the model got wrong.
+
+Providers: "anthropic" (ANTHROPIC_API_KEY), "openai" (OPENAI_API_KEY), or
+"local": any OpenAI-compatible server (vLLM, SGLang, Ollama, llama.cpp) at
+base_url / $ANALYSIS_BASE_URL, e.g. a model served on another machine in the
+LAN; no key needed ($ANALYSIS_API_KEY if the server wants one), and the model
+defaults to the first one the server lists.
+Without a key (or base_url for "local") the prompt is still written to disk and
+the LLM call is skipped, so the loop keeps running and the prompt can be inspected.
 
 Files written per run under <run_dir>/defect_analysis/:
     defects.json   summary + sampled defect examples
@@ -25,9 +33,12 @@ Files written per run under <run_dir>/defect_analysis/:
 """
 from __future__ import annotations
 
+import base64
+import io
 import json
 import os
 import random
+import re
 from collections import Counter
 from pathlib import Path
 from typing import List, Optional
@@ -41,6 +52,8 @@ API_KEY_ENV = {
     "openai": "OPENAI_API_KEY",
 }
 MAX_TOKENS = 16000
+LOCAL_TIMEOUT_SEC = 1800  # local models can think for minutes
+IMAGE_MAX_SIDE = 512      # defect images are downscaled to this before sending
 
 
 class LLMUnavailable(RuntimeError):
@@ -93,6 +106,7 @@ Respond with ONLY a single JSON object. No markdown, no commentary, no code fenc
 
 USER_TEMPLATE = """## Task
 LoRA fine-tuning of base model: {model_name}. Primary metric: {primary_metric}.
+Training hardware: {hardware}.
 
 ## Run just completed
 exp_id: {exp_id}
@@ -105,7 +119,7 @@ config:
 {summary}
 
 ## Defect examples (sampled{sample_note})
-{examples}
+{examples}{image_note}
 
 ## Recent experiment history (most recent first)
 {history}
@@ -148,7 +162,8 @@ def _format_history(history: List[dict], limit: int = 10) -> str:
 
 
 def build_prompt(result: dict, summary: dict, history: List[dict],
-                 model_name: str, primary_metric: str) -> str:
+                 model_name: str, primary_metric: str, hardware: str = "",
+                 n_images: int = 0) -> str:
     cfg = result["config"]
     metrics = {primary_metric: result.get("accuracy"), **result.get("extra", {})}
     examples = "\n".join(json.dumps(e, default=str) for e in summary["examples"]) or "(no defects)"
@@ -156,6 +171,7 @@ def build_prompt(result: dict, summary: dict, history: List[dict],
     return USER_TEMPLATE.format(
         model_name=model_name,
         primary_metric=primary_metric,
+        hardware=hardware or "unspecified",
         exp_id=result["exp_id"],
         hypothesis=cfg.get("hypothesis", ""),
         metrics=json.dumps(metrics, default=str),
@@ -163,23 +179,60 @@ def build_prompt(result: dict, summary: dict, history: List[dict],
         summary=json.dumps(stats, indent=2),
         sample_note=f", {summary['n_examples_shown']} of {summary['n_defects']}",
         examples=examples,
+        image_note=(f"\n\nThe images of {n_images} of these examples are attached after this "
+                    "prompt, each preceded by its id." if n_images else ""),
         history=_format_history(history),
     )
 
 
 # --- LLM call -----------------------------------------------------------------
 
-def call_llm(system: str, user: str, provider: str = "anthropic",
-             model: Optional[str] = None) -> str:
-    """Send one system+user prompt and return the text reply.
+def _encode_image(path: str) -> Optional[str]:
+    """Downscaled JPEG of a local image as base64, or None if it can't be read."""
+    try:
+        from PIL import Image
+        img = Image.open(path).convert("RGB")
+        img.thumbnail((IMAGE_MAX_SIDE, IMAGE_MAX_SIDE))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        return base64.b64encode(buf.getvalue()).decode("ascii")
+    except Exception as e:
+        print(f"  [defects] could not attach image {path}: {type(e).__name__}: {e}")
+        return None
 
-    Raises LLMUnavailable if the provider's API key or SDK is missing.
+
+def _image_parts(images: List[tuple], provider: str) -> list:
+    """Content parts for (caption, base64_jpeg) pairs in the provider's format."""
+    parts = []
+    for caption, b64 in images:
+        parts.append({"type": "text", "text": caption})
+        if provider == "anthropic":
+            parts.append({"type": "image", "source": {
+                "type": "base64", "media_type": "image/jpeg", "data": b64}})
+        else:
+            parts.append({"type": "image_url", "image_url": {
+                "url": f"data:image/jpeg;base64,{b64}"}})
+    return parts
+
+
+def call_llm(system: str, user: str, provider: str = "anthropic",
+             model: Optional[str] = None, base_url: Optional[str] = None,
+             images: Optional[List[tuple]] = None) -> str:
+    """Send one system+user prompt (plus optional (caption, base64_jpeg) images)
+    and return the text reply.
+
+    Raises LLMUnavailable if the provider's API key / base_url or SDK is missing.
     """
-    if provider not in DEFAULT_MODELS:
-        raise ValueError(f"Unknown analysis provider {provider!r}; use one of {list(DEFAULT_MODELS)}")
-    if not os.environ.get(API_KEY_ENV[provider]):
+    if provider not in ("anthropic", "openai", "local"):
+        raise ValueError(f"Unknown analysis provider {provider!r}; use anthropic, openai or local")
+    if provider == "local":
+        base_url = base_url or os.environ.get("ANALYSIS_BASE_URL")
+        if not base_url:
+            raise LLMUnavailable("no base_url for the local provider (set ANALYSIS_BASE_URL)")
+    elif not os.environ.get(API_KEY_ENV[provider]):
         raise LLMUnavailable(f"{API_KEY_ENV[provider]} not set")
-    model = model or os.environ.get("ANALYSIS_MODEL") or DEFAULT_MODELS[provider]
+    model = model or os.environ.get("ANALYSIS_MODEL") or DEFAULT_MODELS.get(provider)
+    content = [{"type": "text", "text": user}] + _image_parts(images or [], provider)
 
     if provider == "anthropic":
         try:
@@ -191,7 +244,7 @@ def call_llm(system: str, user: str, provider: str = "anthropic",
             model=model,
             max_tokens=MAX_TOKENS,
             system=system,
-            messages=[{"role": "user", "content": user}],
+            messages=[{"role": "user", "content": content}],
             # Passed via extra_body so older SDK versions accept them.
             # fallbacks: if the model declines, the API re-runs the request on
             # a fallback model within the same call.
@@ -206,20 +259,31 @@ def call_llm(system: str, user: str, provider: str = "anthropic",
         import openai
     except ImportError as e:
         raise LLMUnavailable("openai package not installed; pip install openai") from e
-    client = openai.OpenAI()
+    if provider == "local":
+        client = openai.OpenAI(base_url=base_url, timeout=LOCAL_TIMEOUT_SEC,
+                               api_key=os.environ.get("ANALYSIS_API_KEY", "EMPTY"))
+        model = model or client.models.list().data[0].id
+        # No max_tokens: local servers reject prompt + max_tokens > context length,
+        # and default to the remaining context when it's omitted.
+        limit = {}
+    else:
+        client = openai.OpenAI()
+        limit = {"max_tokens": MAX_TOKENS}
     resp = client.chat.completions.create(
         model=model,
-        max_tokens=MAX_TOKENS,
         messages=[
             {"role": "system", "content": system},
-            {"role": "user", "content": user},
+            {"role": "user", "content": content},
         ],
         response_format={"type": "json_object"},
+        **limit,
     )
     return (resp.choices[0].message.content or "").strip()
 
 
 def _parse_json(raw: str) -> dict:
+    # Reasoning models served without a reasoning parser inline their thoughts.
+    raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.S)
     start, end = raw.find("{"), raw.rfind("}")
     if start == -1 or end <= start:
         raise ValueError(f"Could not find JSON in analysis response: {raw[:200]!r}")
@@ -265,6 +329,8 @@ def analyze_and_plan(
     provider: str = "anthropic",
     model: Optional[str] = None,
     max_examples: int = 50,
+    base_url: Optional[str] = None,
+    hardware: str = "",
 ) -> Optional[dict]:
     """Summarize defects, ask the LLM for a plan, write artifacts.
 
@@ -278,11 +344,20 @@ def analyze_and_plan(
     print(f"  [defects] public n={summary['n_total']} defects={summary['n_defects']} "
           f"({100 * summary['defect_rate']:.1f}%)")
 
-    user = build_prompt(result, summary, history, model_name, primary_metric)
+    images = []
+    for ex in summary["examples"]:
+        b64 = _encode_image(ex["image"]) if ex.get("image") else None
+        if b64:
+            images.append((f"Defect id={ex.get('id')} (expected={ex.get('expected')}, "
+                           f"predicted={ex.get('predicted')}):", b64))
+
+    user = build_prompt(result, summary, history, model_name, primary_metric,
+                        hardware=hardware, n_images=len(images))
     (out / "prompt.md").write_text(f"# System\n\n{SYSTEM_PROMPT}\n\n# User\n\n{user}\n", encoding="utf-8")
 
     try:
-        raw = call_llm(SYSTEM_PROMPT, user, provider=provider, model=model)
+        raw = call_llm(SYSTEM_PROMPT, user, provider=provider, model=model,
+                       base_url=base_url, images=images)
     except LLMUnavailable as e:
         print(f"  [defects] LLM analysis skipped ({e}); prompt saved to {out / 'prompt.md'}")
         return None
